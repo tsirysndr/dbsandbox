@@ -46,12 +46,11 @@ dbsandbox --help
 ```
 
 The flake includes [bsdkrun](https://github.com/tsirysndr/bsdkrun) and the Docker CLI.
-On macOS, bsdkrun needs Homebrew's libkrun:
+On macOS, install the libkrun fork below. Uninstall any previous libkrun formula first:
 
 ```sh
-brew tap libkrun/krun
-brew trust libkrun/krun
-brew install libkrun
+brew uninstall libkrun # If previously installed
+brew install tsirysndr/tap/libkrun
 BSDKRUN_IMPURE=1 nix profile install --impure github:tsirysndr/dbsandbox
 ```
 
