@@ -1,0 +1,9 @@
+name = "dbsandbox-tests"
+version = "0.1.0"
+license = "MPL-2.0"
+description = "Install bsdkrun on Ubuntu and run database sandbox unit and real KVM/database/ZFS tests."
+sdk = "purescript"
+runtime = "component"
+entry = "entry.mjs"
+artifact = "dist/plugin.wasm"
+build = ["node", "build.mjs"]
