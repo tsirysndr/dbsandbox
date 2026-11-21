@@ -107,3 +107,20 @@ test('MySQL BSD provisioning scripts parse and keep rc services disabled until Z
     expect(body).toContain('--mysqlx=0');
   }
 });
+
+
+test('Linux fork allocation checks guest sockets and avoids the engine ephemeral range', async () => {
+  const {parse,available,seed}=await import('../output/Sbx.Runtime.Ports/index.js');
+  const {Left}=await import('../output/Data.Either/index.js');
+  const text='32768 60999\n sl local_address rem_address st\n 0: 00000000:84E4 00000000:0000 0A\n 1: 0100007F:1771 0100007F:0016 01\n sl local_address remote_address st\n 0: 00000000000000000000000000000000:EE49 00000000000000000000000000000000:0000 0A\n';
+  const snapshot=parse(text).value0;expect(snapshot).toEqual({low:32768,high:60999,busy:[34020,6001,61001]});
+  // Reproduce CI: the host reports free, but the guest owns 34020.
+  expect(available(false)(snapshot)(34020)).toBe(false);
+  const choose=requested=>selectPort([61000])(port=>PromiseAff(available(requested instanceof Nothing)(snapshot)(port)))(requested);
+  expect(await promise(choose(Nothing.value)(seed(snapshot)(34020)))).toBe(61002);
+  await expect(promise(choose(new Just(34020))(34020))).rejects.toThrow('in use');
+  expect(await promise(choose(new Just(34021))(34021))).toBe(34021);
+  expect(available(true)(snapshot)(34021)).toBe(false);expect(available(false)(snapshot)(34021)).toBe(true);
+  for(const bad of ['', 'not a socket table','32768 60999'])expect(parse(bad)).toBeInstanceOf(Left);
+  expect(seed({low:32768,high:65535,busy:[]})(34020)).toBe(1024);
+});

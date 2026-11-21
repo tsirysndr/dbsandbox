@@ -22,6 +22,7 @@ import Effect.Exception (error)
 import Sbx.Runtime.BsdServer as BSD
 import Sbx.Cli (Command(..), BranchOpts, StartOpts)
 import Sbx.Runtime.Engine as Engine
+import Sbx.Runtime.Ports as Ports
 import Sbx.Branch.Identity as I
 import Sbx.Platform.Native as N
 import Sbx.Branch.Native as PN
@@ -280,12 +281,16 @@ branch base p o = case o.name, o.arg of
       Nothing -> state (root p)
     let child = p { tool = I.instanceName p.tool name, cli = (root p).cli <> " --branch " <> name }
     used <- reserved p ""
+    when (source.os == "linux") Engine.ensureEngine
+    guestPorts <- if source.os == "linux" && hasPort p source then Just <$> Ports.read else pure Nothing
+    let initial = if source.port > 0 && source.port < 65535 then source.port + 1 else p.guestPort + 1
+    let initialPort = maybe initial (flip Ports.seed initial) guestPorts
+    let probe candidate = if maybe true (\snapshot -> Ports.available (o.port == Nothing) snapshot candidate) guestPorts then available p source candidate else pure false
     port <-
-      if hasPort p source then selectPort (used <> if source.os == "linux" then [] else [ p.guestPort ]) (available p source) o.port (if source.port > 0 && source.port < 65535 then source.port + 1 else p.guestPort + 1)
+      if hasPort p source then selectPort (used <> if source.os == "linux" then [] else [ p.guestPort ]) probe o.port initialPort
       else do
         for_ o.port \_ -> fail "This database mode does not expose a server port"
         pure 0
-    when (source.os == "linux") Engine.ensureEngine
     -- Branching uses the pool's current holder. In particular, BSD never
     -- imports the same pool into a second VM.
     void $ Zfs.branch vol.name name (Just from)

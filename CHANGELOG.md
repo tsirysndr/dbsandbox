@@ -26,6 +26,8 @@
 
 ### Fixed
 
+- Check host and VM ports when allocating Linux branch servers, avoiding ephemeral-port collisions.
+
 - Prepare all OpenTUI OS, CPU, and libc variants before compiling standalone binaries.
 
 - Include ZFS-only branches in inventory and allow switching to them.
