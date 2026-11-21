@@ -25,6 +25,15 @@ The host needs macOS Apple Silicon or Linux with KVM, [bsdkrun](https://github.c
 and the Docker CLI for Linux guests. Docker Desktop is unnecessary: [bsdkrun](https://github.com/tsirysndr/bsdkrun)
 provides the engine VM. First startup needs network access for images/packages.
 
+Install with Homebrew on macOS Apple Silicon or Linux:
+
+```sh
+brew install tsirysndr/tap/dbsandbox
+dbsandbox --help
+```
+
+The formula installs the Docker CLI and bsdkrun dependencies.
+
 From source, use Node.js 22/24 and Bun:
 
 ```sh
