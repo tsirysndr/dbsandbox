@@ -60,4 +60,5 @@ jobs:
       - name: Check binary and development environment
         run: |
           ./result/bin/dbsandbox --version
+          ./result/bin/dbsandbox --help
           nix develop ${{ matrix.flags }} --no-write-lock-file --command bash -euc 'bun --version; node --version; purs --version; spago --version; purs-tidy --version; prettier --version'

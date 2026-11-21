@@ -91,6 +91,7 @@ let
       actual=$("$out/bin/dbsandbox" --version)
       printf '%s\n' "$actual"
       test "$actual" = 'dbsandbox ${version}'
+      "$out/bin/dbsandbox" --help
     '';
     meta = {
       description = manifest.description;
