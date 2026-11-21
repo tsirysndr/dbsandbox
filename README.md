@@ -38,6 +38,18 @@ dbsandbox --help
 
 The formula installs the Docker CLI and bsdkrun dependencies.
 
+Or use npm (Node.js 18+):
+
+```sh
+npx dbsandbox --help
+# Or install globally:
+npm install -g dbsandbox
+```
+
+The npm package downloads the matching GitHub release, verifies `SHA256SUMS`,
+and includes `@bsdkrun/cli` as a dependency. Its source is in [`npm/`](npm/).
+The matching release assets and npm package must be published first.
+
 From source, use Bun 1.4.5 or newer (Node.js 22/24 is also used by Spago's toolchain):
 
 ```sh

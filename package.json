@@ -25,8 +25,9 @@
     "build:ui": "bun ui/build.mjs",
     "format:purs": "purs-tidy format-in-place 'src/**/*.purs' 'packages/**/*.purs' 'test/Test/**/*.purs' '.fluentci/test/src/**/*.purs'",
     "format:web": "prettier --write 'ui/src/**/*.{svelte,js,css}' ui/build.mjs",
-    "format": "bun run format:purs && bun run format:web",
-    "format:check": "purs-tidy check 'src/**/*.purs' 'packages/**/*.purs' 'test/Test/**/*.purs' '.fluentci/test/src/**/*.purs' && prettier --check 'ui/src/**/*.{svelte,js,css}' ui/build.mjs"
+    "format": "bun run format:purs && bun run format:web && bun run format:npm",
+    "format:check": "purs-tidy check 'src/**/*.purs' 'packages/**/*.purs' 'test/Test/**/*.purs' '.fluentci/test/src/**/*.purs' && prettier --check 'ui/src/**/*.{svelte,js,css}' ui/build.mjs 'npm/**/*.js' npm/package.json",
+    "format:npm": "prettier --write 'npm/**/*.js' npm/package.json"
   },
   "dependencies": {
     "@bsdkrun/sdk": "^0.8.0",

@@ -16,3 +16,6 @@ fluentci_modules/
 ui/generated/
 
 __pycache__/
+
+npm/binaries/
+*.tgz

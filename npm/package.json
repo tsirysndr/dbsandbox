@@ -1,0 +1,55 @@
+{
+  "name": "dbsandbox",
+  "version": "0.2.0",
+  "description": "Database sandboxes with parallel ZFS branches, web and terminal dashboards. Installs the prebuilt native CLI.",
+  "license": "MIT",
+  "type": "commonjs",
+  "homepage": "https://github.com/tsirysndr/dbsandbox#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tsirysndr/dbsandbox.git",
+    "directory": "npm"
+  },
+  "bugs": {
+    "url": "https://github.com/tsirysndr/dbsandbox/issues"
+  },
+  "keywords": [
+    "database",
+    "sandbox",
+    "zfs",
+    "branching",
+    "postgres",
+    "duckdb",
+    "bsdkrun",
+    "cli"
+  ],
+  "bin": {
+    "dbsandbox": "bin/dbsandbox.js"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "dependencies": {
+    "@bsdkrun/cli": "^0.12.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "arm64",
+    "x64"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

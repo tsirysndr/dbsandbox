@@ -4,6 +4,8 @@
 
 ### Added
 
+- npm launcher package with a verified GitHub release installer and an `@bsdkrun/cli` dependency.
+
 - Global sandbox inventory, database catalog, diagnostics, engine controls, stop-all, and shell completions.
 - Svelte web dashboard and native OpenTUI dashboard, bundled into the standalone executable.
 - Database-scoped branch lists, fuzzy search, pagination, keyboard shortcuts, URL copying, and confirmed inactive-branch deletion.
@@ -23,6 +25,8 @@
 - Add the README banner and document installation, dashboards, branches, logs, and completions.
 
 ### Fixed
+
+- Prepare all OpenTUI OS, CPU, and libc variants before compiling standalone binaries.
 
 - Include ZFS-only branches in inventory and allow switching to them.
 - Keep keyboard selection on the same branch when background inventory refreshes reorder rows.
