@@ -1,4 +1,5 @@
 # dbsandbox
+[![Test](https://github.com/tsirysndr/dbsandbox/actions/workflows/test.yml/badge.svg)](https://github.com/tsirysndr/dbsandbox/actions/workflows/test.yml)
 
 Database, search and authorization sandboxes in one PureScript CLI, powered by
 [bsdkrun](https://github.com/tsirysndr/bsdkrun). Fork database data with ZFS
