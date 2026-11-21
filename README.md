@@ -5,23 +5,23 @@ Database, search and authorization sandboxes in one PureScript CLI, powered by
 copy-on-write and run the forks as independent servers at the same time.
 
 ```sh
-dbsandbox postgres start
-dbsandbox postgres branch feature
-dbsandbox postgres --branch feature url
-dbsandbox postgres checkout feature   # select it; other servers keep running
+dbsandbox postgres start                         # Start a PostgreSQL server
+dbsandbox postgres branch feature                # Fork the data and start a parallel server
+dbsandbox postgres --branch feature url          # Show the feature server connection URL
+dbsandbox postgres checkout feature              # Select feature; other servers keep running
 
-dbsandbox mariadb start
-dbsandbox duckdb start linux 2.0.0
-dbsandbox sqlite start                # libSQL HTTP server
-dbsandbox mysql start --port 3307     # alongside MariaDB
-dbsandbox typesense start --password my-api-key
-dbsandbox chroma start
+dbsandbox mariadb start                          # Start a MariaDB server
+dbsandbox duckdb start linux 2.0.0               # Start DuckDB 2.0.0 with a Quack server
+dbsandbox sqlite start                           # Start a libSQL HTTP server
+dbsandbox mysql start --port 3307                # Start MySQL alongside MariaDB on another port
+dbsandbox typesense start --password my-api-key  # Start Typesense with a custom API key
+dbsandbox chroma start                           # Start a Chroma vector database server
 ```
 
 ## Installation
 
-The host needs macOS Apple Silicon or Linux with KVM, bsdkrun **0.12.2 or newer**,
-and the Docker CLI for Linux guests. Docker Desktop is unnecessary: bsdkrun
+The host needs macOS Apple Silicon or Linux with KVM, [bsdkrun](https://github.com/tsirysndr/bsdkrun) **0.12.2 or newer**,
+and the Docker CLI for Linux guests. Docker Desktop is unnecessary: [bsdkrun](https://github.com/tsirysndr/bsdkrun)
 provides the engine VM. First startup needs network access for images/packages.
 
 From source, use Node.js 22/24 and Bun:
@@ -69,7 +69,7 @@ dbsandbox postgres status
 dbsandbox duckdb url
 ```
 
-The visible command is `dbsandbox DATABASE`; resource names reported by bsdkrun
+The visible command is `dbsandbox DATABASE`; resource names reported by [bsdkrun](https://github.com/tsirysndr/bsdkrun)
 can still contain the original tool names. `XDG_CONFIG_HOME` is respected.
 
 ## Supported databases
@@ -293,7 +293,7 @@ fluentci run --workflow test      # Ubuntu x86_64, sudo and /dev/kvm
 ```
 
 The custom `.fluentci/test` PureScript component installs checksum-verified
-bsdkrun, runs unit tests, builds the executable, and tests real servers,
+[bsdkrun](https://github.com/tsirysndr/bsdkrun), runs unit tests, builds the executable, and tests real servers,
 forwarded ports, credentials, nested forks, selection, persistence and cleanup.
 Live tests use unique runtime names and temporary configuration. They preserve
 existing services and remove their own containers/VMs and volumes in finalizers.

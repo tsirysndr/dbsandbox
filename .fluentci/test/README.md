@@ -11,15 +11,15 @@ fluentci run test e2e                        # installed bsdkrun, Docker and bui
 ```
 
 `all` invokes the project's compiled PureScript CI runner (`src/Ci`). It
-verifies the pinned bsdkrun release archive (default `v0.12.2`), installs its
+verifies the pinned [bsdkrun](https://github.com/tsirysndr/bsdkrun) release archive (default `v0.12.2`), installs its
 bundled Linux libkrun libraries and gvproxy, and enables `/dev/kvm`. It leaves
-engine creation and disk formatting to normal `dbsandbox DATABASE start` and bsdkrun.
+engine creation and disk formatting to normal `dbsandbox DATABASE start` and [bsdkrun](https://github.com/tsirysndr/bsdkrun).
 There is no host mkfs call, engine pre-start or custom file-limit adjustment.
 
 The live suite checks that normal startup creates a native overlay engine on
 ext4, then restarts the VM and checks its mount and data persistence. New engines
 request a sparse 20 GiB image store; existing engines retain their configuration.
-bsdkrun 0.12.2 includes the guest ext4 formatting fix and delegates cgroup v2
+[bsdkrun](https://github.com/tsirysndr/bsdkrun) 0.12.2 includes the guest ext4 formatting fix and delegates cgroup v2
 controllers required by TiDB inside Docker containers.
 Diagnostics capture post-ZFS mounts, engine status and guest process limits.
 
