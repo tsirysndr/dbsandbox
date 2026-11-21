@@ -22,6 +22,7 @@ module Sbx.Engine
   ) where
 
 import Prelude
+import Bsdkrun as B
 import Bsdkrun.Host as Host
 import Bsdkrun.Docker as Docker
 import Bsdkrun.Types (DockerContainer, ZfsVolumeInfo)
@@ -77,7 +78,19 @@ ensureEngine :: Aff Unit
 ensureEngine = ensureEngineMemory 2048
 
 ensureEngineFor :: Profile -> Aff Unit
-ensureEngineFor p = ensureEngineMemory p.engineMem
+ensureEngineFor p = do
+  -- Heavy single-node backends need room for their forks. Resize after stop:
+  -- a running VM can overwrite metadata again when it finally exits.
+  when (p.engineMem > 2048) do
+    machines <- B.list true
+    for_ (Array.find (\m -> toMaybe m.name == Just Docker.machineName) machines) \m ->
+      when (m.mem < p.engineMem) do
+        say ("Increasing the shared engine RAM to " <> show p.engineMem <> " MiB for " <> p.product <> " (its containers restart together) ...")
+        up <- engineRunning
+        when up Docker.stop
+        code <- Native.runBsdkrun ["update", Docker.machineName, "--mem", show p.engineMem]
+        unless (code == 0) $ throwError (error "resizing the Docker engine failed")
+  ensureEngineMemory p.engineMem
 
 ensureEngineMemory :: Int -> Aff Unit
 ensureEngineMemory mem = do
