@@ -49,7 +49,7 @@ shared VM per database, with separate processes for parallel branches.
 
 ## Installation
 
-The host needs macOS Apple Silicon or Linux with KVM, bsdkrun **0.12.1 or newer**,
+The host needs macOS Apple Silicon or Linux with KVM, bsdkrun **0.12.2 or newer**,
 and the Docker CLI for Linux guests. Docker Desktop is unnecessary: bsdkrun
 provides the engine VM. First startup needs network access for images/packages.
 
@@ -235,6 +235,7 @@ dbsandbox cockroachdb start
 dbsandbox tidb start
 dbsandbox tigerbeetle start
 dbsandbox tigerbeetle repl
+dbsandbox tigerbeetle repl --command="lookup_accounts id=1;"
 dbsandbox spicedb start --password my-preshared-key
 ```
 
@@ -254,12 +255,14 @@ local development modes; CockroachDB starts with `--insecure`.
 
 SpiceDB's PostgreSQL, Databend's metadata and filesystem storage, and Vearch's
 master/router/partition data are kept together on the ZFS branch. TigerBeetle
-formats its data file only on first creation. Image wrappers are generated
-from PureScript. Images must provide a build for the Linux guest's CPU
+formats its data file only on first creation. Cassandra and ScyllaDB use
+synchronous batch commit logs so acknowledged writes reach a fork immediately.
+Image wrappers are generated from PureScript. Images must provide a build for the Linux guest's CPU
 architecture; available architectures depend on the upstream tag.
 
-Databend, ClickHouse, Cassandra, ScyllaDB and YugabyteDB request 6 GiB when
-creating a new engine. Existing engines retain their configured size. For
+Databend, TigerBeetle, ClickHouse, Cassandra, ScyllaDB and YugabyteDB request
+6 GiB when creating a new engine, and grow smaller existing engines after a clean stop.
+Other configured resources are preserved; the engine is never shrunk. For
 parallel branches of heavier servers, resize the shared VM as needed:
 
 ```sh

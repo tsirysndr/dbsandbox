@@ -36,7 +36,7 @@ import Data.Nullable (toMaybe)
 import Data.String as String
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
-import Effect.Console (log)
+import Effect.Console (log, warn)
 import Effect.Exception (error)
 import Foreign.Object as Object
 import Sbx.Native as Native
@@ -254,7 +254,7 @@ toolImage p = case p.tools of
     let image = toolsTag t
     have <- Docker.docker [ "image", "inspect", image ] <#> (_.exitCode >>> eq 0)
     unless have do
-      say ("Building the " <> image <> " image (the CLIs) in the engine ...")
+      liftEffect $ warn ("Building the " <> image <> " image (the CLIs) in the engine ...")
       dir <- liftEffect do
         d <- Native.configDir p.tool <#> \c -> Native.pathJoin c "tools"
         Native.mkdirp d

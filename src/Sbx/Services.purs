@@ -17,6 +17,7 @@ http :: String -> String -> String -> Int -> String -> String -> Profile
 http name product repo port dir health = Typesense.profile
   { cli = "dbsandbox " <> name, tool = name <> "-sbx", product = product
   , image = image repo, defaultTag = "latest", guestPort = port
+  , dockerArgs = nofile
   , dataDir = const dir, hasToken = false, hasCredentials = false
   , defaults = {user: "", password: "", db: name}, env = const O.empty
   , http = Just {health, headers: const O.empty}, driver = name
@@ -41,7 +42,7 @@ surrealdb = (http "surrealdb" "SurrealDB" "surrealdb/surrealdb" 8000 "/data" "/h
   , http = Just {health: "/health", headers: \c -> O.insert "Content-Type" "text/plain" (basic c)}}
 arangodb :: Profile
 arangodb = (http "arangodb" "ArangoDB" "arangodb" 8529 "/var/lib/arangodb3" "/_api/version")
-  {hasCredentials = false, hasToken = true, defaults = {user: "root", password: "arangodb", db: "_system"}
+  {hasCredentials = false, hasToken = true, dockerArgs = nofile, defaults = {user: "root", password: "arangodb", db: "_system"}
   , env = \c -> O.singleton "ARANGO_ROOT_PASSWORD" c.password
   , command = const (Just ["--javascript.app-path", "/var/lib/arangodb3/apps"])
   , http = Just {health: "/_api/version", headers: basic}}
@@ -51,7 +52,7 @@ clickhouse = (http "clickhouse" "ClickHouse" "clickhouse/clickhouse-server" 8123
   , dockerArgs = nofile
   , env = \c -> O.fromFoldable ["CLICKHOUSE_USER" /\ c.user, "CLICKHOUSE_PASSWORD" /\ c.password, "CLICKHOUSE_DB" /\ c.db, "CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT" /\ "1"]
   , http = Just {health: "/ping", headers: basic}
-  , client = Guest \_ _ c -> ["clickhouse-client", "--host", "127.0.0.1", "--user", c.user, "--password", c.password, "--database", c.db]
+  , client = Guest \_ _ c -> ["clickhouse-client", "--host", "127.0.0.1", "--user", c.user, "--password=" <> c.password, "--database", c.db]
   , clientName = "clickhouse", clientAliases = ["sql"]}
 mongodb :: Profile
 mongodb = (http "mongodb" "MongoDB" "mongo" 27017 "/data/db" "")
@@ -68,6 +69,9 @@ mongoUrl c port = "mongodb://" <> N.encodeURIComponent c.user <> ":" <> N.encode
 cassandra :: Profile
 cassandra = (http "cassandra" "Cassandra" "cassandra" 9042 "/var/lib/cassandra" "")
   {defaultTag = "5", engineMem = 6144, http = Nothing, dockerArgs = nofile
+  , containerDockerfile = Just \tag -> S.joinWith "\n"
+      ["FROM " <> image "cassandra" tag
+      , "RUN sed -i -e '/^commitlog_sync:/d' -e '/^commitlog_sync_period/d' /etc/cassandra/cassandra.yaml && printf '\\ncommitlog_sync: batch\\n' >> /etc/cassandra/cassandra.yaml"]
   , env = const (O.fromFoldable ["MAX_HEAP_SIZE" /\ "512M", "HEAP_NEWSIZE" /\ "100M", "CASSANDRA_CLUSTER_NAME" /\ "dbsandbox", "CASSANDRA_RPC_ADDRESS" /\ "0.0.0.0"])
   , ready = \_ _ _ -> ["cqlsh", "127.0.0.1", "9042", "-e", "SELECT release_version FROM system.local;"]
   , client = Guest \_ _ _ -> ["cqlsh", "127.0.0.1", "9042"]
@@ -77,22 +81,33 @@ scylladb :: Profile
 scylladb = cassandra
   {cli = "dbsandbox scylladb", tool = "scylladb-sbx", product = "ScyllaDB", driver = "scylladb"
   , image = image "scylladb/scylla", defaultTag = "latest", dataDir = const "/var/lib/scylla", env = const O.empty
-  , command = const (Just ["--smp", "1", "--memory", "1536M", "--overprovisioned", "1", "--developer-mode", "1"])}
+  , containerDockerfile = Just \tag -> S.joinWith "\n"
+      ["FROM " <> image "scylladb/scylla" tag, "USER 0"
+      , "RUN sed -i -e '/^commitlog_sync:/d' -e '/^commitlog_sync_period/d' /etc/scylla/scylla.yaml && printf '\\ncommitlog_sync: batch\\n' >> /etc/scylla/scylla.yaml && chown scylla:scylla /etc/scylla/scylla.yaml"
+      , script "/usr/local/bin/sbx-start" ["chown -R \"$(id -u scylla):$(id -g scylla)\" /var/lib/scylla", "chown scylla:scylla /proc/self/fd/1 /proc/self/fd/2", "exec runuser -u scylla -- /docker-entrypoint.py \"$@\""]
+      , "ENTRYPOINT [\"/usr/local/bin/sbx-start\"]"]
+  , command = const (Just ["--smp", "1", "--memory", "1536M", "--overprovisioned", "1", "--developer-mode", "1", "--rpc-address", "0.0.0.0", "--broadcast-rpc-address", "127.0.0.1"])}
 
 -- PostgreSQL-wire services retain the shared host driver and Drizzle tools.
 timescale :: Profile
 timescale = Postgres.profile
   {cli = "dbsandbox timescale", tool = "timescale-sbx", product = "TimescaleDB"
   , linuxOnly = true, provision = const Nothing, rootDisk = const Nothing, migrations = Nothing
-  , image = image "timescale/timescaledb", defaultTag = "latest-pg18"}
+  , image = image "timescale/timescaledb", defaultTag = "latest-pg18"
+  , dataDir = const "/var/lib/postgresql"
+  , env = \c -> O.insert "PGDATA" "/var/lib/postgresql/pgdata" (Postgres.profile.env c)}
 yugabytedb :: Profile
 yugabytedb = Postgres.profile
   {cli = "dbsandbox yugabytedb", tool = "yugabytedb-sbx", product = "YugabyteDB"
   , linuxOnly = true, provision = const Nothing, rootDisk = const Nothing, migrations = Nothing
   , image = image "yugabytedb/yugabyte", defaultTag = "2026.1.3.0-b100", engineMem = 6144, guestPort = 5433
-  , dataDir = const "/home/yugabyte/yb_data", dockerArgs = ["--hostname", "dbsandbox-node"]
+  , dataDir = const "/home/yugabyte/yb_data", dockerArgs = ["--hostname", "dbsandbox-node"] <> nofile
+  , containerDockerfile = Just \tag -> S.joinWith "\n"
+      ["FROM " <> image "yugabytedb/yugabyte" tag, "USER 0"
+      , script "/usr/local/bin/sbx-start" ["chown -R \"$(id -u yugabyte):$(id -g yugabyte)\" /home/yugabyte/yb_data", "exec runuser -u yugabyte -- \"$@\""]
+      , "ENTRYPOINT [\"/sbin/tini\", \"--\", \"/usr/local/bin/sbx-start\"]"]
   , defaults = {user: "yugabyte", password: "", db: "yugabyte"}, hasCredentials = false, hasDatabase = false, env = const O.empty
-  , command = const (Just ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--background=false", "--listen=0.0.0.0", "--advertise_address=127.0.0.1", "--callhome=false"])
+  , command = const (Just ["bin/yugabyted", "start", "--base_dir=/home/yugabyte/yb_data", "--background=false", "--advertise_address=127.0.0.1", "--callhome=false", "--master_flags=memory_limit_hard_bytes=268435456", "--tserver_flags=memory_limit_hard_bytes=536870912,pgsql_proxy_bind_address=0.0.0.0:5433"])
   , ready = \_ _ _ -> ["/home/yugabyte/bin/ysqlsh", "-h", "127.0.0.1", "-p", "5433", "-U", "yugabyte", "-d", "yugabyte", "-tAc", "SELECT 1"]
   , client = Guest \_ _ _ -> ["/home/yugabyte/bin/ysqlsh", "-h", "127.0.0.1", "-p", "5433", "-U", "yugabyte", "-d", "yugabyte"]
   , clientName = "ysqlsh"}
@@ -101,6 +116,7 @@ cockroachdb = Postgres.profile
   {cli = "dbsandbox cockroachdb", tool = "cockroachdb-sbx", product = "CockroachDB"
   , linuxOnly = true, provision = const Nothing, rootDisk = const Nothing, migrations = Nothing
   , image = image "cockroachdb/cockroach", defaultTag = "latest", guestPort = 26257
+  , dockerArgs = nofile <> ["--entrypoint", "/cockroach/cockroach"]
   , dataDir = const "/cockroach/cockroach-data", defaults = {user: "root", password: "", db: "defaultdb"}
   , hasCredentials = false, hasDatabase = false, env = const O.empty
   , command = const (Just ["start-single-node", "--insecure", "--store=/cockroach/cockroach-data", "--listen-addr=0.0.0.0:26257", "--advertise-addr=127.0.0.1:26257", "--cache=128MiB", "--max-sql-memory=128MiB"])
@@ -112,13 +128,11 @@ tidb :: Profile
 tidb = MySQL.profile
   {cli = "dbsandbox tidb", tool = "tidb-sbx", product = "TiDB", linuxOnly = true
   , provision = const Nothing, rootDisk = const Nothing, guestPort = 4000, dataDir = const "/data"
+  , dockerArgs = nofile
   , defaultTag = "latest", image = image "pingcap/tidb", hasCredentials = false, hasDatabase = false
   , defaults = {user: "root", password: "", db: "test"}, env = const O.empty
-  , containerDockerfile = Just \tag -> S.joinWith "\n"
-      ["FROM " <> image "pingcap/tidb" tag <> " AS upstream", "FROM debian:bookworm-slim"
-      , "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*"
-      , "COPY --from=upstream /tidb-server /usr/local/bin/tidb-server", "ENTRYPOINT [\"/usr/local/bin/tidb-server\"]"]
-  , command = const (Just ["--store=unistore", "--path=/data/tidb", "--host=0.0.0.0", "--port=4000"])
+  , containerDockerfile = Nothing
+  , command = const (Just ["--store=unistore", "--path=/data/tidb", "--host=0.0.0.0", "-P=4000"])
   , ready = \_ _ _ -> ["curl", "-fsS", "http://127.0.0.1:10080/status"]
   , tools = Just {image: "dbsandbox-mysql-tools", dockerfile: "FROM mysql:8.4\n"}
   , client = Guest \_ _ _ -> ["mysql", "--protocol=TCP", "-h", "127.0.0.1", "-P", "4000", "-u", "root", "test"]}
@@ -127,7 +141,8 @@ databend :: Profile
 databend = (http "databend" "Databend" "datafuselabs/databend" 8000 "/var/lib/databend" "/v1/health")
   {hasCredentials = true, engineMem = 6144, defaults = {user: "databend", password: "databend", db: "default"}
   , env = \c -> O.fromFoldable ["QUERY_DEFAULT_USER" /\ c.user, "QUERY_DEFAULT_PASSWORD" /\ c.password, "QUERY_STORAGE_TYPE" /\ "fs"]
-  , http = Just {health: "/v1/health", headers: basic}}
+  , http = Just {health: "", headers: basic}
+  , ready = \_ _ _ -> ["curl", "-fsS", "http://127.0.0.1:8080/v1/health"]}
 
 spicedb :: Profile
 spicedb = (http "spicedb" "SpiceDB" "authzed/spicedb" 8443 "/data" "")
@@ -138,19 +153,19 @@ spicedb = (http "spicedb" "SpiceDB" "authzed/spicedb" 8443 "/data" "")
       ["FROM " <> image "authzed/spicedb" tag <> " AS upstream", "FROM postgres:17-bookworm"
       , "COPY --from=upstream /usr/local/bin/spicedb /usr/local/bin/spicedb"
       , "COPY --from=upstream /usr/local/bin/grpc_health_probe /usr/local/bin/grpc_health_probe"
-      , script "/usr/local/bin/sbx-start" ["mkdir -p /data/postgres; chown postgres:postgres /data/postgres", "if [ ! -f /data/postgres/PG_VERSION ]; then gosu postgres initdb -D /data/postgres --auth=trust; fi", "gosu postgres pg_ctl -D /data/postgres -o '-h 127.0.0.1 -c track_commit_timestamp=on' -w start", "if ! gosu postgres psql -h 127.0.0.1 -tAc \"SELECT 1 FROM pg_database WHERE datname='spicedb'\" | grep -q 1; then gosu postgres createdb -h 127.0.0.1 spicedb; fi", "spicedb datastore migrate head", "exec spicedb serve"]
+      , script "/usr/local/bin/sbx-start" ["mkdir -p /data/postgres; chown postgres:postgres /data/postgres", "if [ ! -f /data/postgres/PG_VERSION ]; then gosu postgres initdb -D /data/postgres --auth=trust; fi", "gosu postgres pg_ctl -D /data/postgres -o '-h 127.0.0.1 -c track_commit_timestamp=on' -w start", "if ! gosu postgres psql -h 127.0.0.1 -tAc \"SELECT 1 FROM pg_database WHERE datname='spicedb'\" | grep -q 1; then gosu postgres createdb -h 127.0.0.1 spicedb; fi", "spicedb datastore migrate head --skip-release-check=true", "exec spicedb serve --skip-release-check=true"]
       , "ENTRYPOINT [\"/usr/local/bin/sbx-start\"]"]
   , ready = \_ _ _ -> ["grpc_health_probe", "-addr=127.0.0.1:50051"]}
 
 tigerbeetle :: Profile
 tigerbeetle = (http "tigerbeetle" "TigerBeetle" "ghcr.io/tigerbeetle/tigerbeetle" 3000 "/data" "")
-  {http = Nothing, dockerArgs = ["--security-opt", "seccomp=unconfined", "--ulimit", "memlock=-1:-1"]
+  {http = Nothing, engineMem = 6144, dockerArgs = nofile <> ["--security-opt", "seccomp=unconfined", "--ulimit", "memlock=-1:-1"]
   , containerDockerfile = Just \tag -> S.joinWith "\n"
       ["FROM " <> image "ghcr.io/tigerbeetle/tigerbeetle" tag <> " AS upstream", "FROM debian:bookworm-slim"
       , "COPY --from=upstream /tigerbeetle /usr/local/bin/tigerbeetle"
       , script "/usr/local/bin/sbx-start" ["if [ ! -f /data/0_0.tigerbeetle ]; then tigerbeetle format --cluster=0 --replica=0 --replica-count=1 --development /data/0_0.tigerbeetle; fi", "exec tigerbeetle start --addresses=0.0.0.0:3000 --development --cache-grid=256MiB /data/0_0.tigerbeetle"]
       , "ENTRYPOINT [\"/usr/local/bin/sbx-start\"]"]
-  , ready = \_ _ _ -> ["sh", "-c", "printf '%s\\n' 'lookup_accounts id=1;' | timeout 3 tigerbeetle repl --cluster=0 --addresses=127.0.0.1:3000"]
+  , ready = \_ _ _ -> ["sh", "-c", "reply=$(timeout 5 tigerbeetle repl --cluster=0 --addresses=127.0.0.1:3000 '--command=lookup_accounts id=1;' 2>&1) && exit 0; printf '%s\\n' \"$reply\" | grep -Fxq 'No accounts were found.'"]
   , client = Guest \_ _ _ -> ["tigerbeetle", "repl", "--cluster=0", "--addresses=127.0.0.1:3000"]
   , clientName = "repl", fancy = {name: "tb", cmd: GuestTool \_ _ _ -> ["tigerbeetle", "repl", "--cluster=0", "--addresses=127.0.0.1:3000"]}
   , url = \_ _ port -> "tigerbeetle://127.0.0.1:" <> show port <> "?cluster=0"}
