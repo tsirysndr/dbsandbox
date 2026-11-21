@@ -40,6 +40,7 @@ verifyBinary bytes platform =
 
 buildBinary :: Aff Unit
 buildBinary = do
+  prepareNative
   liftEffect (N.mkdir "dist")
   void $ C.run "bun" [ "build", "--compile", "--minify", "bin/dbsandbox.js", "--outfile", "dist/dbsandbox" ]
 
@@ -56,9 +57,7 @@ build = do
   node <- liftEffect N.node
   cli <- C.run node [ "bin/dbsandbox.js", "--version" ]
   C.fromEither (verifyVersion tag version cli.stdout)
-  -- Include native OpenTUI assets for every cross-compilation target. Normal
-  -- installs only need the host package; release binaries must carry theirs.
-  void $ C.run "bun" [ "install", "--frozen-lockfile", "--ignore-scripts", "--os", "*", "--cpu", "*" ]
+  prepareNative
   staging <- liftEffect (N.resolve ("dist/release-build/" <> platform))
   liftEffect (N.mkdir staging *> N.mkdir "dist/release")
   let executable = staging <> "/dbsandbox"
@@ -75,6 +74,11 @@ build = do
     N.copy "docs/assets/readme-banner.svg" (staging <> "/docs/assets/readme-banner.svg")
   archive <- liftEffect (N.resolve ("dist/release/dbsandbox-" <> platform <> ".tar.gz"))
   void $ C.run "tar" [ "-czf", archive, "-C", staging, "dbsandbox", "README.md", "LICENSE", "CHANGELOG.md", "docs/assets/readme-banner.svg" ]
+
+-- | Bun resolves OpenTUI's optional native imports while compiling, including
+-- | musl imports on glibc hosts. Install every variant before either build path.
+prepareNative :: Aff Unit
+prepareNative = void $ C.run "bun" [ "install", "--frozen-lockfile", "--ignore-scripts", "--os", "*", "--cpu", "*", "--libc", "*" ]
 
 -- Only invoked by the contents:write publish job, never by tests or builds.
 publish :: Aff Unit
