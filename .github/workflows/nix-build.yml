@@ -1,0 +1,62 @@
+name: Nix build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nix-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Nix · ${{ matrix.system }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-latest
+            flags: ''
+            impure: ''
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            flags: ''
+            impure: ''
+          - system: aarch64-darwin
+            runner: macos-15
+            flags: --impure
+            impure: '1'
+    env:
+      BSDKRUN_IMPURE: ${{ matrix.impure }}
+      NIX_CONFIG: |
+        access-tokens = github.com=${{ github.token }}
+        accept-flake-config = true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fluentci-io/setup-fluentci@next
+        with:
+          version: v0.17.8
+      - name: Set up Determinate Nix with FluentCI
+        shell: bash
+        run: |
+          set -euo pipefail
+          fluentci --check-update=false run --frozen-lockfile setup-determinate-nix@0.2.2 setup --sudo --trusted-users "$(id -un)" \
+            | node .fluentci/github-env.mjs
+      - name: Install libkrun for bsdkrun on macOS
+        if: runner.os == 'macOS'
+        run: |
+          brew tap libkrun/krun
+          brew install libkrun/krun/libkrun
+      - name: Build dbsandbox
+        run: nix build ${{ matrix.flags }} --no-write-lock-file --print-build-logs .#dbsandbox
+      - name: Check binary and development environment
+        run: |
+          ./result/bin/dbsandbox --version
+          nix develop ${{ matrix.flags }} --no-write-lock-file --command bash -euc 'bun --version; node --version; purs --version; spago --version; purs-tidy --version; prettier --version'

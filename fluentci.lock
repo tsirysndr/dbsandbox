@@ -2,6 +2,116 @@
   "lockfileVersion": 1,
   "modules": {},
   "packages": {
+    "@fluentci.io/nix-publish@0.2.0": {
+      "registry": "https://api.fluentci.io",
+      "name": "nix-publish",
+      "version": "0.2.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/nix-publish/v0.2.0/nix-publish.wasm",
+      "sha256": "6a996e19c4bc350a15c4398d039cda11f02ee76711a29d1284e9c4d6745e4566",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/nix-publish-0.2.0",
+      "cid": "bafyreif66ytzeokr2mbxrzl7d5ng5bsjog3mkr5vzlehdjtoy2pmrqgepu",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/publishing/nix-publish/README.md",
+      "topics": [
+        "publish",
+        "nix",
+        "flakehub",
+        "flakestry"
+      ],
+      "os": [
+        "linux",
+        "macos"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
+    "@fluentci.io/setup-bun@0.2.0": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-bun",
+      "version": "0.2.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-bun/v0.2.0/setup-bun.wasm",
+      "sha256": "4ccd777c1ecb2b28a5076a1075f600c40c8d0e4ee54a89864abe92ec62594fc9",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-bun-0.2.0",
+      "cid": "bafyreif5ingx3cbdp5tsmhco7odhhnycqjd32vpoo5fwqta5zalvo4hvme",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/bun/README.md",
+      "topics": [
+        "bun",
+        "javascript",
+        "typescript",
+        "setup",
+        "ci",
+        "toolchain"
+      ],
+      "os": [
+        "linux",
+        "macos"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
+    "@fluentci.io/setup-determinate-nix@0.2.2": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-determinate-nix",
+      "version": "0.2.2",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-determinate-nix/v0.2.2/setup-determinate-nix.wasm",
+      "sha256": "3fc0c6957cbdbcd51e990af1e72713223539952868dbbbbe2c126c43d063aa3a",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-determinate-nix-0.2.2",
+      "cid": "bafyreiai7ifbumlo7gfhstnr6bgxtpcf32ezniiw7i3h56fjumzcqrsvsy",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/determinate-nix/README.md",
+      "topics": [
+        "nix",
+        "determinate-nix",
+        "package-manager",
+        "setup",
+        "ci",
+        "toolchain"
+      ],
+      "os": [
+        "linux",
+        "macos"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
+    "@fluentci.io/setup-flakehub-push@0.2.0": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-flakehub-push",
+      "version": "0.2.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-flakehub-push/v0.2.0/setup-flakehub-push.wasm",
+      "sha256": "79d41d7d9bf458dd64e0cedf3ee325ab9905a8cdeec648eaa00a0f37516dc45a",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-flakehub-push-0.2.0",
+      "cid": "bafyreieaglo7roy3nyrnnkcs43tlowq5qn57va23jxb6jzh4sguqq5tuy4",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/flakehub-push/README.md",
+      "topics": [
+        "flakehub",
+        "nix",
+        "flakes",
+        "publishing",
+        "setup",
+        "ci"
+      ],
+      "os": [
+        "linux",
+        "macos"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
     "@fluentci.io/setup-purescript@0.2.0": {
       "registry": "https://api.fluentci.io",
       "name": "setup-purescript",

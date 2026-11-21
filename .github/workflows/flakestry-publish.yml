@@ -1,0 +1,63 @@
+name: Publish tags to Flakestry
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: flakestry-publish-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'tsirysndr/dbsandbox'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PUBLISH_TAG: ${{ inputs.tag || github.ref_name }}
+      NIX_CONFIG: |
+        access-tokens = github.com=${{ github.token }}
+        accept-flake-config = true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: fluentci-io/setup-fluentci@next
+        with:
+          version: v0.17.8
+      - name: Set up Determinate Nix
+        shell: bash
+        run: |
+          set -euo pipefail
+          fluentci --check-update=false run --frozen-lockfile setup-determinate-nix@0.2.2 setup --sudo --trusted-users "$(id -un)" \
+            | node .fluentci/github-env.mjs
+      - name: Set up Bun
+        shell: bash
+        run: |
+          set -euo pipefail
+          fluentci --check-update=false run --frozen-lockfile setup-bun@0.2.0 setup --version 1.4.5 \
+            | node .fluentci/github-env.mjs
+      - name: Publish to Flakestry
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$PUBLISH_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          revision=$(git rev-parse --verify "refs/tags/$PUBLISH_TAG^{commit}")
+          fluentci --check-update=false run --frozen-lockfile nix-publish@0.2.0 flakestry \
+            --run-dir "$RUNNER_TEMP/flakestry-$GITHUB_RUN_ATTEMPT" \
+            --version "$PUBLISH_TAG" --ref "$revision" --timeout-ms 2400000
