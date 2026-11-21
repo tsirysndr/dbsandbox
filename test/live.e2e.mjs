@@ -2,7 +2,13 @@
 import { test } from 'bun:test';
 import { spawn } from 'node:child_process';
 import { all } from '../output/Sbx.Database.Profiles/index.js';
+import {prepareRuntime} from '../output/Ci.Common/index.js';
+import {promise} from './support/aff.mjs';
 import {duckUiLive,studioLive} from './support/web-live.mjs';
+
+// Browser UI tests run in this parent process, so they need the same runtime
+// environment as the separate PureScript database-test children.
+await promise(prepareRuntime);
 
 const selected=process.env.DBSANDBOX_E2E_DATABASE;
 if(selected && !all.some(db=>db.name===selected)) throw Error(`Unknown E2E database: ${selected}`);

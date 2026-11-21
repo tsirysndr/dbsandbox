@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, chmodSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, chmodSync, mkdirSync, existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { Left, Right } from '../output/Data.Either/index.js';
 import { decode, persist } from '../output/Ci.Environment/index.js';
@@ -123,4 +123,13 @@ test('bootstrap exports the validated managed PATH when the runner cannot find B
     const exported=readFileSync(github,'utf8');expect(exported).toContain('PATH<<fluentci_');expect(exported).toContain(managed);expect(exported).toContain('BUN_INSTALL<<fluentci_');
     const failed=join(dir,'failed-env');writeFileSync(calls,'');const failure=spawnSync(node,['bin/bootstrap-ci.mjs',setup],{env:{...env,INSTALL_RESULT:'17',GITHUB_ENV:failed},encoding:'utf8',timeout:15000});expect(failure.status).toBe(17);expect(existsSync(failed)).toBe(false);expect(readFileSync(calls,'utf8').trim().split('\n')).toHaveLength(1);
   } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('live UI tests discover the checkout-installed runtime without bsdkrun on PATH',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dbsandbox-ui-runtime-'));try{
+  const tools=join(dir,'.fluentci','tools','bsdkrun','bin');mkdirSync(tools,{recursive:true});const binary=join(tools,'bsdkrun');writeFileSync(binary,'#!/bin/sh\nexit 0\n',{mode:0o755});
+  const source=`import{prepareRuntime,bsdkrun}from${JSON.stringify(resolve('output/Ci.Common/index.js'))};import{promise}from${JSON.stringify(resolve('test/support/aff.mjs'))};await promise(prepareRuntime);console.log(JSON.stringify({binary:await promise(bsdkrun),path:process.env.PATH,override:process.env.BSDKRUN_BIN}));`;
+  const result=spawnSync(process.execPath,['-e',source],{cwd:dir,env:{...process.env,PATH:'/no-bsdkrun-here',BSDKRUN_BIN:''},encoding:'utf8',timeout:10000});expect(result.status,result.stderr).toBe(0);const env=JSON.parse(result.stdout);expect(env.binary).toBe(realpathSync(binary));expect(env.override).toBe(realpathSync(binary));expect(env.path.split(':')[0]).toBe(realpathSync(tools));
+ }finally{rmSync(dir,{recursive:true,force:true});}
 });
