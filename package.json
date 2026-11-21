@@ -9,28 +9,52 @@
   },
   "files": [
     "bin",
+    "docs/assets/readme-banner.svg",
     "output/**/*.js",
-    "output/package.json"
+    "output/package.json",
+    "ui/generated"
   ],
   "scripts": {
-    "build": "spago build",
-    "test": "spago test && npm run test:cli",
-    "prepare": "spago build",
-    "build:bin": "spago build && node bin/ci.js build-binary",
+    "build": "spago build && bun run build:ui",
+    "test": "bun run build && spago test && bun run test:cli",
+    "prepare": "bun run build",
+    "build:bin": "bun run build && bun bin/ci.js build-binary",
     "test:cli": "bun test --timeout 120000 test/*.test.mjs",
     "test:e2e": "bun test --timeout 1800000 ./test/live.e2e.mjs",
-    "build:release": "node bin/ci.js release"
+    "build:release": "bun run build && bun bin/ci.js release",
+    "build:ui": "bun ui/build.mjs",
+    "format:purs": "purs-tidy format-in-place 'src/**/*.purs' 'packages/**/*.purs' 'test/Test/**/*.purs' '.fluentci/test/src/**/*.purs'",
+    "format:web": "prettier --write 'ui/src/**/*.{svelte,js,css}' ui/build.mjs",
+    "format": "bun run format:purs && bun run format:web",
+    "format:check": "purs-tidy check 'src/**/*.purs' 'packages/**/*.purs' 'test/Test/**/*.purs' '.fluentci/test/src/**/*.purs' && prettier --check 'ui/src/**/*.{svelte,js,css}' ui/build.mjs"
   },
   "dependencies": {
     "@bsdkrun/sdk": "^0.8.0",
+    "@libsql/client": "^0.18.0",
+    "@opentui/core": "^0.9.7",
+    "dayjs": "^1.11.23",
     "drizzle-kit": "^0.31.11",
     "drizzle-orm": "^0.45.4",
-    "pg": "^8.23.1",
     "mysql2": "^3.24.6",
-    "@libsql/client": "^0.18.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@lucide/svelte": "^1.77.0",
+    "@tailwindcss/postcss": "^4.3.5",
+    "esbuild": "^0.28.2",
+    "postcss": "^8.5.33",
+    "prettier": "^3.10.1",
+    "prettier-plugin-svelte": "^4.2.0",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "purescript": "^0.15.16",
-    "spago": "^1.0.5"
-  }
+    "purs-tidy": "^0.11.1",
+    "spago": "^1.0.5",
+    "svelte": "^5.59.1",
+    "tailwindcss": "^4.3.5"
+  },
+  "packageManager": "bun@1.4.5",
+  "trustedDependencies": [
+    "esbuild",
+    "purescript"
+  ]
 }

@@ -22,20 +22,32 @@ import Effect.Exception (message, error)
 import Effect.Ref as Ref
 import Foreign.Object as O
 import Node.Process (setExitCode)
-import Sbx.App as App
+import Sbx.Database.App as App
 import Sbx.Cli as Cli
-import Sbx.Profiles as Profiles
-import Sbx.Profile (Profile)
-import Sbx.Http as Http
+import Sbx.Database.Profiles as Profiles
+import Sbx.Database.Profile (Profile)
+import Sbx.Net.Http as Http
 
 type Context =
-  { database :: String, profile :: Profile, name :: String, scratch :: String, logDir :: String, log :: String
-  , env :: O.Object String, runtime :: String, node :: String, version :: String
-  , password :: String, started :: Ref.Ref Boolean, engineWasRunning :: Ref.Ref Boolean
-  , occupied :: Ref.Ref (Maybe N.Port), succeeded :: Ref.Ref Boolean
+  { database :: String
+  , profile :: Profile
+  , name :: String
+  , scratch :: String
+  , logDir :: String
+  , log :: String
+  , env :: O.Object String
+  , runtime :: String
+  , node :: String
+  , version :: String
+  , password :: String
+  , started :: Ref.Ref Boolean
+  , engineWasRunning :: Ref.Ref Boolean
+  , occupied :: Ref.Ref (Maybe N.Port)
+  , succeeded :: Ref.Ref Boolean
   }
 
 type Options = { allowFailure :: Boolean, secret :: Boolean, timeout :: Int, env :: O.Object String }
+
 defaultOptions :: Options
 defaultOptions = { allowFailure: false, secret: false, timeout: 300000, env: O.empty }
 
@@ -47,6 +59,7 @@ redactText c = S.replaceAll (S.Pattern c.password) (S.Replacement "<redacted>")
 
 record :: Context -> String -> Aff Unit
 record c text = liftEffect $ N.appendText c.log (redactText c text <> "\n")
+
 pass :: Context -> String -> Aff Unit
 pass c text = liftEffect (Console.error ("PASS: " <> text)) *> record c ("PASS: " <> text)
 
@@ -69,8 +82,10 @@ command c options program args = do
 
 cliWith :: Context -> Options -> Array String -> Aff N.Result
 cliWith c options args = command c options c.node ([ "bin/ci.js", "sandbox-cli", c.database, c.name ] <> args)
+
 cli :: Context -> Array String -> Aff String
 cli c args = S.trim <<< _.stdout <$> cliWith c defaultOptions args
+
 runtime :: Context -> Array String -> Aff String
 runtime c args = _.stdout <$> command c defaultOptions c.runtime args
 
@@ -83,16 +98,17 @@ queryAt c selected = queryWith c selected Nothing
 queryWith :: Context -> Array String -> Maybe String -> String -> Aff String
 queryWith c selected override sql = do
   uri <- cliWith c (defaultOptions { secret = true }) (selected <> [ "url" ])
-  let address = case override of
-        Nothing -> S.trim uri.stdout
-        Just wrong -> S.replaceAll (S.Pattern c.password) (S.Replacement wrong) (S.trim uri.stdout)
+  let
+    address = case override of
+      Nothing -> S.trim uri.stdout
+      Just wrong -> S.replaceAll (S.Pattern c.password) (S.Replacement wrong) (S.trim uri.stdout)
   if c.profile.driver == "quack" then do
     token <- case override of
       Just wrong -> pure wrong
-      Nothing -> S.trim <<< _.stdout <$> cliWith c (defaultOptions {secret = true}) (selected <> ["token"])
+      Nothing -> S.trim <<< _.stdout <$> cliWith c (defaultOptions { secret = true }) (selected <> [ "token" ])
     let attachSql = "ATTACH '" <> address <> "' AS sandbox (TOKEN getenv('DBSANDBOX_E2E_PASSWORD')); CONNECT sandbox;"
-    result <- command c (defaultOptions {allowFailure = true, env = O.singleton "DBSANDBOX_E2E_PASSWORD" token}) (c.scratch <> "/client/duckdb")
-      [":memory:", "-no-agent", "-no-init", "-bail", "-noheader", "-csv", "-cmd", attachSql, "-c", sql]
+    result <- command c (defaultOptions { allowFailure = true, env = O.singleton "DBSANDBOX_E2E_PASSWORD" token }) (c.scratch <> "/client/duckdb")
+      [ ":memory:", "-no-agent", "-no-init", "-bail", "-noheader", "-csv", "-cmd", attachSql, "-c", sql ]
     C.demand "Quack query failed" (result.code == 0)
     pure (S.trim result.stdout)
   else do
@@ -127,9 +143,23 @@ setup requested = do
   engineWasRunning <- liftEffect (Ref.new true)
   occupied <- liftEffect (Ref.new Nothing)
   succeeded <- liftEffect (Ref.new false)
-  pure { database, profile, name, scratch, logDir, log, node, version, password, started, engineWasRunning, occupied, succeeded
-       , runtime: runtimePath
-       , env: O.fromFoldable [ "XDG_CONFIG_HOME" /\ (scratch <> "/config"), "NO_COLOR" /\ "1", "BSDKRUN_NO_AUTO_INSTALL" /\ "1" ] }
+  pure
+    { database
+    , profile
+    , name
+    , scratch
+    , logDir
+    , log
+    , node
+    , version
+    , password
+    , started
+    , engineWasRunning
+    , occupied
+    , succeeded
+    , runtime: runtimePath
+    , env: O.fromFoldable [ "XDG_CONFIG_HOME" /\ (scratch <> "/config"), "NO_COLOR" /\ "1", "BSDKRUN_NO_AUTO_INSTALL" /\ "1" ]
+    }
 
 body :: Context -> Aff Unit
 body c = do
@@ -145,31 +175,32 @@ body c = do
   result <- command c defaultOptions binary [ "--version" ]
   assertEqual ("dbsandbox " <> c.version) (S.trim result.stdout)
   guest <- C.fallback "SBX_E2E_OS" "linux"
-  C.demand "Expected linux, freebsd or netbsd" (A.elem guest ["linux", "freebsd", "netbsd"])
+  C.demand "Expected linux, freebsd or netbsd" (A.elem guest [ "linux", "freebsd", "netbsd" ])
   when (c.profile.driver == "quack") do
     host <- liftEffect N.platform
     let os = if host.os == "darwin" then "osx" else host.os
     let arch = if host.arch == "x64" then "amd64" else host.arch
     liftEffect (N.mkdir (c.scratch <> "/client"))
-    void $ command c defaultOptions "curl" ["-fsSL", "--retry", "3", "https://github.com/duckdb/duckdb/releases/download/v2.0.0/duckdb-cli-" <> os <> "-" <> arch <> ".tar.gz", "-o", c.scratch <> "/client.tar.gz"]
-    void $ command c defaultOptions "tar" ["-xzf", c.scratch <> "/client.tar.gz", "-C", c.scratch <> "/client"]
+    void $ command c defaultOptions "curl" [ "-fsSL", "--retry", "3", "https://github.com/duckdb/duckdb/releases/download/v2.0.0/duckdb-cli-" <> os <> "-" <> arch <> ".tar.gz", "-o", c.scratch <> "/client.tar.gz" ]
+    void $ command c defaultOptions "tar" [ "-xzf", c.scratch <> "/client.tar.gz", "-C", c.scratch <> "/client" ]
     liftEffect (N.chmod (c.scratch <> "/client/duckdb") 493)
   port <- freePort
   liftEffect (Ref.write true c.started)
   void $ cliWith c (defaultOptions { timeout = 600000 })
-    ([ "start", guest ] <> (if guest == "linux" then [c.profile.defaultTag] else ["--mem", "2048"]) <> [ "--port", show port, "-d" ] <> (if c.profile.hasCredentials then [ "--user", "sbx_e2e", "--password", c.password, "--db", "sbx_e2e" ] else if c.profile.hasToken then ["--password", c.password] else []))
+    ([ "start", guest ] <> (if guest == "linux" then [ c.profile.defaultTag ] else [ "--mem", "2048" ]) <> [ "--port", show port, "-d" ] <> (if c.profile.hasCredentials then [ "--user", "sbx_e2e", "--password", c.password, "--db", "sbx_e2e" ] else if c.profile.hasToken then [ "--password", c.password ] else []))
   query c "SELECT 42;" >>= assertEqual "42"
   when (c.database == "timescale") do
     void $ query c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
     query c "SELECT count(*) FROM pg_extension WHERE extname='timescaledb';" >>= assertEqual "1"
-  let sqlArgs = case c.database of
-        name | name == "postgres" || name == "timescale" || name == "yugabytedb" -> [c.profile.clientName, "-tAc", "SELECT 42;"]
-        "cockroachdb" -> ["cockroach", "--format=tsv", "--execute=SELECT 42"]
-        "tidb" -> ["mysql", "-N", "-B", "-e", "SELECT 42;"]
-        "mysql" -> ["mysql", "-N", "-B", "-e", "SELECT 42;"]
-        "mariadb" -> ["mariadb", "-N", "-B", "-e", "SELECT 42;"]
-        "duckdb" -> ["duckdb", "-noheader", "-csv", "-c", "SELECT 42;"]
-        _ -> ["sqlite3", "SELECT 42;"]
+  let
+    sqlArgs = case c.database of
+      name | name == "postgres" || name == "timescale" || name == "yugabytedb" -> [ c.profile.clientName, "-tAc", "SELECT 42;" ]
+      "cockroachdb" -> [ "cockroach", "--format=tsv", "--execute=SELECT 42" ]
+      "tidb" -> [ "mysql", "-N", "-B", "-e", "SELECT 42;" ]
+      "mysql" -> [ "mysql", "-N", "-B", "-e", "SELECT 42;" ]
+      "mariadb" -> [ "mariadb", "-N", "-B", "-e", "SELECT 42;" ]
+      "duckdb" -> [ "duckdb", "-noheader", "-csv", "-c", "SELECT 42;" ]
+      _ -> [ "sqlite3", "SELECT 42;" ]
   output <- cli c sqlArgs
   if c.database == "cockroachdb" then C.demand "Cockroach SQL client failed" (S.contains (S.Pattern "42") output) else assertEqual "42" output
   when (c.profile.hasCredentials || c.profile.hasToken) do
@@ -186,32 +217,32 @@ body c = do
     query c "SELECT n FROM e2e_values;" >>= assertEqual "42"
     pass c "normal startup creates an overlay/ext4 engine and preserves it across VM restart"
   void $ cli c [ "branch", "feature" ]
-  queryAt c ["--branch", "feature"] "SELECT n FROM e2e_values;" >>= assertEqual "42"
-  void $ queryAt c ["--branch", "feature"] "UPDATE e2e_values SET n=7;"
-  queryAt c ["--branch", "feature"] "SELECT n FROM e2e_values;" >>= assertEqual "7"
+  queryAt c [ "--branch", "feature" ] "SELECT n FROM e2e_values;" >>= assertEqual "42"
+  void $ queryAt c [ "--branch", "feature" ] "UPDATE e2e_values SET n=7;"
+  queryAt c [ "--branch", "feature" ] "SELECT n FROM e2e_values;" >>= assertEqual "7"
   query c "SELECT n FROM e2e_values;" >>= assertEqual "42"
   void $ cli c [ "branch", "nested", "--from", "feature" ]
-  queryAt c ["--branch", "nested"] "SELECT n FROM e2e_values;" >>= assertEqual "7"
+  queryAt c [ "--branch", "nested" ] "SELECT n FROM e2e_values;" >>= assertEqual "7"
   void $ cli c [ "checkout", "feature" ]
   query c "SELECT n FROM e2e_values;" >>= assertEqual "7"
   void $ cli c [ "checkout", "main" ]
   query c "SELECT n FROM e2e_values;" >>= assertEqual "42"
   void $ cli c [ "stop" ]
-  queryAt c ["--branch", "feature"] "SELECT n FROM e2e_values;" >>= assertEqual "7"
+  queryAt c [ "--branch", "feature" ] "SELECT n FROM e2e_values;" >>= assertEqual "7"
   void $ cli c [ "start", "-d" ]
   query c "SELECT n FROM e2e_values;" >>= assertEqual "42"
   void $ cli c [ "--branch", "feature", "stop" ]
-  queryAt c ["--branch", "nested"] "SELECT n FROM e2e_values;" >>= assertEqual "7"
+  queryAt c [ "--branch", "nested" ] "SELECT n FROM e2e_values;" >>= assertEqual "7"
   when (guest /= "linux") do
-    void $ runtime c ["stop", c.name]
-    void $ cli c ["start", "-d"]
-    queryAt c ["--branch", "nested"] "SELECT n FROM e2e_values;" >>= assertEqual "7"
-    stoppedFork <- cli c ["--branch", "feature", "status"]
+    void $ runtime c [ "stop", c.name ]
+    void $ cli c [ "start", "-d" ]
+    queryAt c [ "--branch", "nested" ] "SELECT n FROM e2e_values;" >>= assertEqual "7"
+    stoppedFork <- cli c [ "--branch", "feature", "status" ]
     C.demand "A stopped fork restarted with the BSD VM" (S.contains (S.Pattern "STOPPED") stoppedFork)
   void $ cli c [ "--branch", "feature", "start", "-d" ]
-  queryAt c ["--branch", "feature"] "SELECT n FROM e2e_values;" >>= assertEqual "7"
+  queryAt c [ "--branch", "feature" ] "SELECT n FROM e2e_values;" >>= assertEqual "7"
   void $ cli c [ "branch", "-d", "nested" ]
-  queryAt c ["--branch", "feature"] "SELECT n FROM e2e_values;" >>= assertEqual "7"
+  queryAt c [ "--branch", "feature" ] "SELECT n FROM e2e_values;" >>= assertEqual "7"
   void $ cli c [ "branch", "-d", "feature" ]
   query c "SELECT n FROM e2e_values;" >>= assertEqual "42"
   pass c "parallel containers, nested forks, focus changes, independent stops and ZFS isolation"
@@ -270,9 +301,11 @@ cleanup c = do
 
 run :: String -> Aff Unit
 run database = bracket (setup database) cleanup \c -> do
-  result <- attempt (case Workload.find c.database of
-    Just workload -> bodyWorkload c workload
-    Nothing -> if c.database == "tigerbeetle" then bodyWorkload c tigerWorkload else if c.database == "typesense" || c.database == "chroma" then bodyApi c else body c)
+  result <- attempt
+    ( case Workload.find c.database of
+        Just workload -> bodyWorkload c workload
+        Nothing -> if c.database == "tigerbeetle" then bodyWorkload c tigerWorkload else if c.database == "typesense" || c.database == "chroma" then bodyApi c else body c
+    )
   case result of
     Left err -> record c ("FAIL: " <> message err) *> throwError err
     Right _ -> pure unit
@@ -290,129 +323,132 @@ sandboxCli database name args = do
 
 -- API databases exercise the same branch manager with collections instead of SQL.
 api :: Context -> Array String -> String -> String -> String -> Aff String
-api c selected method path payload = cli c (selected <> ["api", method, path] <> if payload == "" then [] else [payload])
+api c selected method path payload = cli c (selected <> [ "api", method, path ] <> if payload == "" then [] else [ payload ])
 
 bodyApi :: Context -> Aff Unit
 bodyApi c = do
-  before <- runtime c ["docker", "status", "--json"] >>= C.fromEither <<< C.jsonSuffix
+  before <- runtime c [ "docker", "status", "--json" ] >>= C.fromEither <<< C.jsonSuffix
   wasRunning <- C.fromEither (C.boolField "running" before)
   liftEffect (Ref.write wasRunning c.engineWasRunning)
   port <- freePort
   liftEffect (Ref.write true c.started)
-  void $ cliWith c (defaultOptions {timeout = 600000}) (["start", "linux", c.profile.defaultTag, "--port", show port, "-d"] <> if c.profile.hasToken then ["--password", c.password] else [])
+  void $ cliWith c (defaultOptions { timeout = 600000 }) ([ "start", "linux", c.profile.defaultTag, "--port", show port, "-d" ] <> if c.profile.hasToken then [ "--password", c.password ] else [])
   let path = if c.database == "typesense" then "/collections" else "/api/v2/tenants/default_tenant/databases/default_database/collections"
   let collection name = if c.database == "typesense" then "{\"name\":\"" <> name <> "\",\"fields\":[{\"name\":\"title\",\"type\":\"string\"}]}" else "{\"name\":\"" <> name <> "\"}"
-  let check selected expected = do
-        listing <- api c selected "GET" path ""
-        C.demand ("Collection missing: " <> expected) (S.contains (S.Pattern expected) listing)
+  let
+    check selected expected = do
+      listing <- api c selected "GET" path ""
+      C.demand ("Collection missing: " <> expected) (S.contains (S.Pattern expected) listing)
   void $ api c [] "POST" path (collection "main_collection")
   check [] "main_collection"
   when c.profile.hasToken do
-    cli c ["token"] >>= assertEqual c.password
-    address <- cli c ["url"]
-    rejected <- Http.request address (O.singleton "X-TYPESENSE-API-KEY" "wrong-key") {method: "GET", path, body: ""} 5000
+    cli c [ "token" ] >>= assertEqual c.password
+    address <- cli c [ "url" ]
+    rejected <- Http.request address (O.singleton "X-TYPESENSE-API-KEY" "wrong-key") { method: "GET", path, body: "" } 5000
     C.demand "Typesense accepted an incorrect API key" (rejected.status == 401)
-  void $ cli c ["branch", "feature"]
-  let feature = ["--branch", "feature"]
+  void $ cli c [ "branch", "feature" ]
+  let feature = [ "--branch", "feature" ]
   check feature "main_collection"
   void $ api c feature "POST" path (collection "feature_collection")
   root <- api c [] "GET" path ""
   C.demand "Fork modified the parent data" (not (S.contains (S.Pattern "feature_collection") root))
-  mainUrl <- cli c ["url"]
-  featureUrl <- cli c (feature <> ["url"])
+  mainUrl <- cli c [ "url" ]
+  featureUrl <- cli c (feature <> [ "url" ])
   C.demand "Parallel API servers share a host port" (mainUrl /= featureUrl)
-  void $ cli c ["branch", "nested", "--from", "feature"]
-  check ["--branch", "nested"] "feature_collection"
-  void $ cli c ["checkout", "feature"]
+  void $ cli c [ "branch", "nested", "--from", "feature" ]
+  check [ "--branch", "nested" ] "feature_collection"
+  void $ cli c [ "checkout", "feature" ]
   check [] "feature_collection"
-  void $ cli c ["checkout", "main"]
-  void $ cli c ["stop"]
+  void $ cli c [ "checkout", "main" ]
+  void $ cli c [ "stop" ]
   check feature "feature_collection"
-  void $ cli c ["start", "-d"]
+  void $ cli c [ "start", "-d" ]
   check [] "main_collection"
-  void $ cli c (feature <> ["stop"])
-  check ["--branch", "nested"] "feature_collection"
-  void $ cli c (feature <> ["start", "-d"])
+  void $ cli c (feature <> [ "stop" ])
+  check [ "--branch", "nested" ] "feature_collection"
+  void $ cli c (feature <> [ "start", "-d" ])
   check feature "feature_collection"
-  void $ cli c ["branch", "-d", "nested"]
-  void $ cli c ["branch", "-d", "feature"]
-  void $ cli c ["stop"]
+  void $ cli c [ "branch", "-d", "nested" ]
+  void $ cli c [ "branch", "-d", "feature" ]
+  void $ cli c [ "stop" ]
   collision <- N.reservePort
   liftEffect (Ref.write (Just collision.handle) c.occupied)
-  rejected <- cliWith c (defaultOptions {allowFailure = true}) ["start", "--port", show collision.port, "-d"]
+  rejected <- cliWith c (defaultOptions { allowFailure = true }) [ "start", "--port", show collision.port, "-d" ]
   C.demand "Occupied API port was accepted" (rejected.code /= 0)
   N.closePort collision.handle
   liftEffect (Ref.write Nothing c.occupied)
   next <- freePort
-  void $ cli c ["start", "--port", show next, "-d"]
+  void $ cli c [ "start", "--port", show next, "-d" ]
   check [] "main_collection"
   pass c "HTTP collections persist across independent, nested ZFS branches, selection changes, stop/start and port changes"
   liftEffect (Ref.write true c.succeeded)
-
 
 -- One lifecycle suite for every native/API workload, with protocol fixtures.
 bodyWorkload :: Context -> Workload.Workload -> Aff Unit
 bodyWorkload c workload = do
   guest <- C.fallback "SBX_E2E_OS" "linux"
   C.demand "This profile supports Linux guests only" (guest == "linux")
-  before <- runtime c ["docker", "status", "--json"] >>= C.fromEither <<< C.jsonSuffix
+  before <- runtime c [ "docker", "status", "--json" ] >>= C.fromEither <<< C.jsonSuffix
   wasRunning <- C.fromEither (C.boolField "running" before)
   liftEffect (Ref.write wasRunning c.engineWasRunning)
   port <- freePort
   liftEffect (Ref.write true c.started)
-  void $ cliWith c (defaultOptions {timeout = 900000}) (["start", "linux", c.profile.defaultTag, "--port", show port, "-d"] <> if c.profile.hasCredentials then ["--user", c.profile.defaults.user, "--password", c.password] <> if c.profile.hasDatabase then ["--db", c.profile.defaults.db] else [] else if c.profile.hasToken then ["--password", c.password] else [])
+  void $ cliWith c (defaultOptions { timeout = 900000 }) ([ "start", "linux", c.profile.defaultTag, "--port", show port, "-d" ] <> if c.profile.hasCredentials then [ "--user", c.profile.defaults.user, "--password", c.password ] <> if c.profile.hasDatabase then [ "--db", c.profile.defaults.db ] else [] else if c.profile.hasToken then [ "--password", c.password ] else [])
   for_ workload.seed (void <<< cli c)
-  let check selected expected = do
-        output <- cli c (selected <> workload.read)
-        C.demand ("Expected persisted marker: " <> expected) (S.contains (S.Pattern expected) output)
+  let
+    check selected expected = do
+      output <- cli c (selected <> workload.read)
+      C.demand ("Expected persisted marker: " <> expected) (S.contains (S.Pattern expected) output)
   check [] workload.original
   when (c.profile.hasToken || c.profile.hasCredentials) do
     case c.profile.http, A.head workload.read of
       Just endpoint, Just "api" -> do
-        address <- cli c ["url"]
+        address <- cli c [ "url" ]
         spec <- C.fromEither (Http.parse (A.drop 1 workload.read))
-        let bad = endpoint.headers {user: c.profile.defaults.user, password: "wrong-password", db: c.profile.defaults.db}
+        let bad = endpoint.headers { user: c.profile.defaults.user, password: "wrong-password", db: c.profile.defaults.db }
         rejected <- Http.request address bad spec 10000
         C.demand "Invalid API credentials were accepted" (rejected.status == 401 || rejected.status == 403)
       _, _ -> pure unit
-  void $ cli c ["branch", "feature"]
-  let feature = ["--branch", "feature"]
+  void $ cli c [ "branch", "feature" ]
+  let feature = [ "--branch", "feature" ]
   check feature workload.original
   void $ cli c (feature <> workload.write)
   check feature workload.forked
   root <- cli c workload.read
   C.demand "Fork modified parent data" (not (S.contains (S.Pattern workload.forked) root))
-  void $ cli c ["branch", "nested", "--from", "feature"]
-  check ["--branch", "nested"] workload.forked
-  mainUrl <- cli c ["url"]
-  branchUrl <- cli c (feature <> ["url"])
+  void $ cli c [ "branch", "nested", "--from", "feature" ]
+  check [ "--branch", "nested" ] workload.forked
+  mainUrl <- cli c [ "url" ]
+  branchUrl <- cli c (feature <> [ "url" ])
   C.demand "Fork reused the parent port" (mainUrl /= branchUrl)
-  void $ cli c ["checkout", "feature"]
+  void $ cli c [ "checkout", "feature" ]
   check [] workload.forked
-  void $ cli c ["checkout", "main"]
-  void $ cli c ["stop"]
+  void $ cli c [ "checkout", "main" ]
+  void $ cli c [ "stop" ]
   check feature workload.forked
-  void $ cli c ["start", "-d"]
+  void $ cli c [ "start", "-d" ]
   check [] workload.original
-  void $ cli c (feature <> ["stop"])
-  check ["--branch", "nested"] workload.forked
-  void $ cli c (feature <> ["start", "-d"])
+  void $ cli c (feature <> [ "stop" ])
+  check [ "--branch", "nested" ] workload.forked
+  void $ cli c (feature <> [ "start", "-d" ])
   check feature workload.forked
-  void $ cli c ["branch", "-d", "nested"]
-  void $ cli c ["branch", "-d", "feature"]
-  void $ cli c ["stop"]
+  void $ cli c [ "branch", "-d", "nested" ]
+  void $ cli c [ "branch", "-d", "feature" ]
+  void $ cli c [ "stop" ]
   nextPort <- freePort
-  void $ cli c ["start", "--port", show nextPort, "-d"]
+  void $ cli c [ "start", "--port", show nextPort, "-d" ]
   check [] workload.original
   pass c "protocol CRUD, nested forks, isolated data, selection, independent stop/start and port changes"
   liftEffect (Ref.write true c.succeeded)
 
 tigerWorkload :: Workload.Workload
 tigerWorkload =
-  { seed: [tigerCommand "create_accounts id=314159 code=10 ledger=1;"]
+  { seed: [ tigerCommand "create_accounts id=314159 code=10 ledger=1;" ]
   , read: tigerCommand "lookup_accounts id=314159,id=271828;"
   , write: tigerCommand "create_accounts id=271828 code=10 ledger=1;"
-  , original: "\"314159\"", forked: "\"271828\"" }
+  , original: "\"314159\""
+  , forked: "\"271828\""
+  }
 
 tigerCommand :: String -> Array String
-tigerCommand command' = ["repl", "--command=" <> command']
+tigerCommand command' = [ "repl", "--command=" <> command' ]

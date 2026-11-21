@@ -4,10 +4,10 @@ import Prelude
 import Effect (Effect)
 import Effect.Console (log)
 import Effect.Exception (throw)
-import Sbx.Sqlite (profile)
+import Sbx.Database.Sqlite (profile)
 import Data.Maybe (Maybe(..))
-import Sbx.Engine (runtimeVersionAllowed)
-import Sbx.Profile (Os(..))
+import Sbx.Runtime.Engine (runtimeVersionAllowed)
+import Sbx.Database.Profile (Os(..))
 
 main :: Effect Unit
 main = do

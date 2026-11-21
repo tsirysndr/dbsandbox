@@ -12,3 +12,7 @@ fluentci_modules/
 .fluentci/workflows/.lock
 
 .fluentci/setup.json
+
+ui/generated/
+
+__pycache__/

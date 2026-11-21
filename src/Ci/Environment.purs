@@ -23,9 +23,8 @@ decode output = do
   entry json = do
     name <- C.stringField "name" json
     value <- C.stringField "value" json
-    if C.matches "^[A-Za-z_][A-Za-z0-9_]*$" name && not (S.contains (S.Pattern "\x0000") value)
-      then Right { name, value }
-      else Left "Invalid setup environment entry"
+    if C.matches "^[A-Za-z_][A-Za-z0-9_]*$" name && not (S.contains (S.Pattern "\x0000") value) then Right { name, value }
+    else Left "Invalid setup environment entry"
 
 persist :: String -> String -> Aff Unit
 persist output destination = do

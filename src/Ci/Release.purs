@@ -13,6 +13,7 @@ import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 
 type Target = { platform :: String, bun :: String, os :: String, arch :: String }
+
 targets :: Array Target
 targets =
   [ { platform: "darwin-aarch64", bun: "bun-darwin-arm64", os: "darwin", arch: "arm64" }
@@ -29,13 +30,13 @@ verifyVersion tag version cli
 verifyBinary :: Array Int -> String -> Either String Unit
 verifyBinary bytes platform =
   if A.length bytes < 32 then Left "Truncated executable"
-  else if platform == "darwin-aarch64" then check (A.take 8 bytes == [207,250,237,254,12,0,0,1])
+  else if platform == "darwin-aarch64" then check (A.take 8 bytes == [ 207, 250, 237, 254, 12, 0, 0, 1 ])
   else if platform == "linux-x86_64" then elf 62
   else if platform == "linux-arm64" then elf 183
   else Left "Unknown release platform"
   where
   check ok = if ok then Right unit else Left ("Executable architecture mismatch for " <> platform)
-  elf machine = check (A.take 6 bytes == [127,69,76,70,2,1] && A.slice 18 20 bytes == [machine,0])
+  elf machine = check (A.take 6 bytes == [ 127, 69, 76, 70, 2, 1 ] && A.slice 18 20 bytes == [ machine, 0 ])
 
 buildBinary :: Aff Unit
 buildBinary = do
@@ -55,6 +56,9 @@ build = do
   node <- liftEffect N.node
   cli <- C.run node [ "bin/dbsandbox.js", "--version" ]
   C.fromEither (verifyVersion tag version cli.stdout)
+  -- Include native OpenTUI assets for every cross-compilation target. Normal
+  -- installs only need the host package; release binaries must carry theirs.
+  void $ C.run "bun" [ "install", "--frozen-lockfile", "--ignore-scripts", "--os", "*", "--cpu", "*" ]
   staging <- liftEffect (N.resolve ("dist/release-build/" <> platform))
   liftEffect (N.mkdir staging *> N.mkdir "dist/release")
   let executable = staging <> "/dbsandbox"
@@ -66,8 +70,11 @@ build = do
     result <- C.run executable [ "--version" ]
     C.fromEither (verifyVersion tag version result.stdout)
   liftEffect $ for_ [ "README.md", "LICENSE" ] \file -> N.copy file (staging <> "/" <> file)
+  liftEffect do
+    N.mkdir (staging <> "/docs/assets")
+    N.copy "docs/assets/readme-banner.svg" (staging <> "/docs/assets/readme-banner.svg")
   archive <- liftEffect (N.resolve ("dist/release/dbsandbox-" <> platform <> ".tar.gz"))
-  void $ C.run "tar" [ "-czf", archive, "-C", staging, "dbsandbox", "README.md", "LICENSE" ]
+  void $ C.run "tar" [ "-czf", archive, "-C", staging, "dbsandbox", "README.md", "LICENSE", "docs/assets/readme-banner.svg" ]
 
 -- Only invoked by the contents:write publish job, never by tests or builds.
 publish :: Aff Unit
@@ -76,10 +83,13 @@ publish = do
   version <- C.projectVersion
   C.fromEither (verifyVersion tag version ("dbsandbox " <> version))
   let assets = map (\t -> "release-assets/dbsandbox-" <> t.platform <> ".tar.gz") targets
-  checksums <- traverse (\path -> do
-    liftEffect (N.exists path) >>= C.demand ("Missing release asset: " <> path)
-    hash <- liftEffect (N.sha256 path)
-    pure (hash <> "  " <> S.drop (S.length "release-assets/") path <> "\n")) assets
+  checksums <- traverse
+    ( \path -> do
+        liftEffect (N.exists path) >>= C.demand ("Missing release asset: " <> path)
+        hash <- liftEffect (N.sha256 path)
+        pure (hash <> "  " <> S.drop (S.length "release-assets/") path <> "\n")
+    )
+    assets
   liftEffect $ N.writeText "release-assets/SHA256SUMS" (S.joinWith "" checksums)
   existing <- N.command { program: "gh", args: [ "release", "view", tag ], env: mempty, cwd: "", timeout: 30000, output: const (pure unit) }
   when (existing.code /= 0) $ void $ C.run "gh" [ "release", "create", tag, "--verify-tag", "--generate-notes", "--title", tag ]

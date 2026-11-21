@@ -3,10 +3,10 @@ import {spawnSync} from 'node:child_process';
 import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {all,find} from '../output/Sbx.Profiles/index.js';
-import {runArgs} from '../output/Sbx.Engine/index.js';
-import {script} from '../output/Sbx.Services/index.js';
-import {Linux} from '../output/Sbx.Profile/index.js';
+import {all,find} from '../output/Sbx.Database.Profiles/index.js';
+import {runArgs} from '../output/Sbx.Runtime.Engine/index.js';
+import {script} from '../output/Sbx.Database.Services/index.js';
+import {Linux} from '../output/Sbx.Database.Profile/index.js';
 import {Nothing} from '../output/Data.Maybe/index.js';
 
 const expected=['databend','tigerbeetle','yugabytedb','vearch','timescale','tidb','spicedb','surrealdb','scylladb','qdrant','mongodb','cassandra','clickhouse','arangodb','cockroachdb'];

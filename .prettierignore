@@ -1,0 +1,12 @@
+node_modules/
+output/
+output-es/
+dist/
+.spago/
+ui/generated/
+.fluentci/test/.sdk/
+.fluentci/test/output/
+.fluentci/test/dist/
+.fluentci/test/node_modules/
+bun.lock
+.fluentci/test/bun.lock

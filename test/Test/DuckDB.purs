@@ -7,11 +7,11 @@ import Data.String as String
 import Effect (Effect)
 import Effect.Console (log)
 import Effect.Exception (throw)
-import Sbx.DuckDB (profile, databaseFile, versionAllowed)
+import Sbx.Database.DuckDB (profile, databaseFile, versionAllowed)
 import Bsdkrun.Options as Options
-import Sbx.Bsd (createOptions)
-import Sbx.Engine (mountPoint, runArgs, runtimeVersionAllowed)
-import Sbx.Profile (ClientCmd(..), Os(..), parseOs)
+import Sbx.Runtime.Bsd (createOptions)
+import Sbx.Runtime.Engine (mountPoint, runArgs, runtimeVersionAllowed)
+import Sbx.Database.Profile (ClientCmd(..), Os(..), parseOs)
 
 assert :: String -> Boolean -> Effect Unit
 assert name ok = unless ok (throw name)

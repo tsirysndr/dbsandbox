@@ -5,9 +5,9 @@ import Bsdkrun.Options as Options
 import Effect (Effect)
 import Effect.Console (log)
 import Effect.Exception (throw)
-import Sbx.Postgres (profile)
-import Sbx.Engine (runtimeVersionAllowed)
-import Sbx.Profile (Os(..))
+import Sbx.Database.Postgres (profile)
+import Sbx.Runtime.Engine (runtimeVersionAllowed)
+import Sbx.Database.Profile (Os(..))
 
 main :: Effect Unit
 main = do

@@ -6,13 +6,14 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Just, Nothing } from '../output/Data.Maybe/index.js';
-import { run, selectPort } from '../output/Sbx.Parallel/index.js';
-import { instanceName, volumeName, validName } from '../output/Sbx.Identity/index.js';
-import { script } from '../output/Sbx.BsdServer/index.js';
-import { writeJson, forward, lock, unlock } from '../output/Sbx.ParallelNative/index.js';
-import { profile } from '../output/Sbx.Postgres/index.js';
-import { profile as mysql } from '../output/Sbx.MySQL/index.js';
-import { FreeBSD, NetBSD } from '../output/Sbx.Profile/index.js';
+import { run, selectPort } from '../output/Sbx.Branch.Manager/index.js';
+import { instanceName, volumeName, validName } from '../output/Sbx.Branch.Identity/index.js';
+import { script } from '../output/Sbx.Runtime.BsdServer/index.js';
+import { writeJson, forward, lock, unlock } from '../output/Sbx.Branch.Native/index.js';
+import { activate, active } from '../output/Sbx.State.Store/index.js';
+import { profile } from '../output/Sbx.Database.Postgres/index.js';
+import { profile as mysql } from '../output/Sbx.Database.MySQL/index.js';
+import { FreeBSD, NetBSD } from '../output/Sbx.Database.Profile/index.js';
 import { promise } from './support/aff.mjs';
 
 test('automatic ports skip stopped reservations and listeners, explicit collisions fail', async () => {
@@ -81,12 +82,12 @@ test('a missing selected branch fails closed; checkout can recover the selection
   try {
     process.env.XDG_CONFIG_HOME = dir;
     const config = join(dir, local.tool); mkdirSync(config);
-    writeJson(join(config, 'active.json'))('removed')();
+    activate(local.tool)(new Just('removed'))();
     await expect(promise(run(fake)(local)(Status.value))).rejects.toThrow('Selected branch is missing');
     expect(calls).toEqual([]);
     await promise(run(fake)(local)(new Checkout({name:'main',create:false})));
     expect(calls).toEqual([local.tool]);
-    expect(() => readFileSync(join(config,'active.json'))).toThrow();
+    expect(active(local.tool)()).toBeInstanceOf(Nothing);
   } finally {
     if (saved === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = saved;
     rmSync(dir,{recursive:true,force:true});

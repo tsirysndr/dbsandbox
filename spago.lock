@@ -12,6 +12,7 @@
             "console",
             "control",
             "datetime",
+            "drizzle",
             "effect",
             "either",
             "exceptions",
@@ -21,6 +22,7 @@
             "maybe",
             "node-process",
             "nullable",
+            "opentui",
             "optparse",
             "prelude",
             "refs",
@@ -33,6 +35,37 @@
           "dependencies": [
             "console"
           ]
+        }
+      },
+      "drizzle": {
+        "path": "packages/drizzle",
+        "core": {
+          "dependencies": [
+            "arrays",
+            "effect",
+            "js-date",
+            "maybe",
+            "nullable",
+            "prelude",
+            "unsafe-coerce"
+          ]
+        },
+        "test": {
+          "dependencies": []
+        }
+      },
+      "opentui": {
+        "path": "packages/opentui",
+        "core": {
+          "dependencies": [
+            "aff",
+            "aff-promise",
+            "effect",
+            "prelude"
+          ]
+        },
+        "test": {
+          "dependencies": []
         }
       }
     },
@@ -707,6 +740,21 @@
         "unsafe-coerce"
       ]
     },
+    "aff-promise": {
+      "type": "registry",
+      "version": "4.0.0",
+      "integrity": "sha256-Jgp3y+NWuuAmwz2V3LlWoX+AvxqfVglY77N5zTw8xnI=",
+      "dependencies": [
+        "aff",
+        "control",
+        "effect",
+        "either",
+        "exceptions",
+        "foreign",
+        "prelude",
+        "transformers"
+      ]
+    },
     "argonaut-core": {
       "type": "registry",
       "version": "7.0.0",
@@ -1082,6 +1130,21 @@
       "integrity": "sha256-HyoT1I5qIHRq8RSZji6zZDvqnpVjLw748utrKwZtqsw=",
       "dependencies": [
         "control",
+        "prelude"
+      ]
+    },
+    "js-date": {
+      "type": "registry",
+      "version": "8.0.0",
+      "integrity": "sha256-DNQrp4xYc8o80jtxo0aOkUeXGi6h0Xidkk2ZQ8Y4l5Y=",
+      "dependencies": [
+        "datetime",
+        "effect",
+        "enums",
+        "foreign",
+        "functions",
+        "integers",
+        "maybe",
         "prelude"
       ]
     },

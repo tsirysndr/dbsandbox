@@ -6,9 +6,9 @@ import Effect (Effect)
 import Effect.Console (log)
 import Effect.Exception (throw)
 import Foreign.Object as Object
-import Sbx.MariaDB (profile)
-import Sbx.Engine (runtimeVersionAllowed)
-import Sbx.Profile (Os(..))
+import Sbx.Database.MariaDB (profile)
+import Sbx.Runtime.Engine (runtimeVersionAllowed)
+import Sbx.Database.Profile (Os(..))
 
 main :: Effect Unit
 main = do

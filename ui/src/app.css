@@ -1,0 +1,70 @@
+@import 'tailwindcss' source(none);
+@source './App.svelte';
+@source './Skeleton.svelte';
+@source './BranchGraph.svelte';
+@theme {
+  --color-canvas: #09090b;
+  --color-panel: #111113;
+  --color-line: #27272a;
+  --color-accent: #8129ff;
+  --color-running: #00ffc3;
+  --font-mono:
+    'SFMono-Regular', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+}
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    @apply m-0 bg-canvas font-mono text-sm leading-7 text-zinc-100 antialiased;
+  }
+  button,
+  input,
+  select {
+    @apply font-mono;
+  }
+  button {
+    @apply cursor-pointer disabled:cursor-default disabled:opacity-40;
+  }
+  button,
+  input,
+  select,
+  a {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent;
+  }
+}
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+@layer components {
+  .skeleton {
+    @apply block h-4 bg-zinc-800;
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
+  }
+  .panel {
+    @apply border border-line bg-panel;
+  }
+  .button {
+    @apply inline-flex min-h-10 items-center justify-center gap-2 border border-line bg-canvas px-3 py-2 text-xs text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white;
+  }
+  .button-small {
+    @apply inline-flex items-center gap-1.5 border border-line px-2.5 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-white;
+  }
+  .control {
+    @apply h-10 w-full border border-line bg-canvas px-3 text-sm text-zinc-200 placeholder:text-zinc-600;
+  }
+  .status-running {
+    @apply text-running;
+  }
+  .status-failed {
+    @apply text-amber-300;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

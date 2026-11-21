@@ -1,38 +1,23 @@
--- | What the tool remembers between invocations: how the sandbox was created.
--- | Kept as JSON under `$XDG_CONFIG_HOME/<tool>` (`~/.config/<tool>`). The
--- | machine and the volume themselves are bsdkrun's; this only records the
--- | choices that bsdkrun does not report back (credentials, OS, version).
-module Sbx.State where
+module Sbx.State (module Types, load, lookup, save, saveFor, clear) where
 
 import Prelude
 import Data.Maybe (Maybe)
-import Data.Nullable (Nullable, toMaybe)
 import Effect (Effect)
-import Sbx.Native as Native
+import Sbx.State.Types (State, decode) as Types
+import Sbx.State.Store as Store
+import Sbx.Database.Profile (Profile)
 
-type State =
-  { os :: String
-  , version :: String -- ^ Linux image tag or BSD release; "" for the default
-  , port :: Int
-  , user :: String
-  , password :: String
-  , db :: String
-  , branch :: String
-  , cpus :: Int
-  , mem :: Int
-  }
+load :: String -> Effect (Maybe Types.State)
+load = Store.load
 
-path :: String -> Effect String
-path tool = Native.configDir tool <#> \dir -> Native.pathJoin dir "state.json"
+lookup :: String -> Effect (Maybe Types.State)
+lookup = Store.load
 
-load :: String -> Effect (Maybe State)
-load tool = path tool >>= Native.readJson <#> toMaybe'
-  where
-  toMaybe' :: Nullable State -> Maybe State
-  toMaybe' = toMaybe
-
-save :: String -> State -> Effect Unit
-save tool st = path tool >>= \p -> Native.writeJson p st
+save :: String -> Types.State -> Effect Unit
+save = Store.save
 
 clear :: String -> Effect Unit
-clear tool = path tool >>= Native.removeFile
+clear = Store.clear
+
+saveFor :: Profile -> Types.State -> Effect Unit
+saveFor = Store.saveFor

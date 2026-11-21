@@ -1,11 +1,11 @@
 import {test, expect} from 'bun:test';
 import {createServer} from 'node:http';
-import {parse,request,healthy,client} from '../output/Sbx.Http/index.js';
+import {parse,request,healthy,client} from '../output/Sbx.Net.Http/index.js';
 import {Left} from '../output/Data.Either/index.js';
-import {profile as typesense} from '../output/Sbx.Typesense/index.js';
-import {profile as chroma} from '../output/Sbx.Chroma/index.js';
-import {profile as mysql} from '../output/Sbx.MySQL/index.js';
-import {find} from '../output/Sbx.Profiles/index.js';
+import {profile as typesense} from '../output/Sbx.Database.Typesense/index.js';
+import {profile as chroma} from '../output/Sbx.Database.Chroma/index.js';
+import {profile as mysql} from '../output/Sbx.Database.MySQL/index.js';
+import {find} from '../output/Sbx.Database.Profiles/index.js';
 import {promise} from './support/aff.mjs';
 
 test('HTTP requests stay on the selected sandbox and validate methods and arguments',()=>{

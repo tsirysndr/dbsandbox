@@ -3,8 +3,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { all } from '../output/Sbx.Profiles/index.js';
-import { instanceName } from '../output/Sbx.Identity/index.js';
+import { all } from '../output/Sbx.Database.Profiles/index.js';
+import { instanceName } from '../output/Sbx.Branch.Identity/index.js';
 const run = (args, env={}) => spawnSync(process.execPath, ['bin/dbsandbox.js', ...args], {
   encoding:'utf8', timeout:10000, env:{...process.env,BSDKRUN_BIN:'/nonexistent/bsdkrun',BSDKRUN_NO_AUTO_INSTALL:'1',...env},
 });

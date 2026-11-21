@@ -27,10 +27,13 @@ fromEither = either (throwError <<< error) pure
 
 field :: String -> Json -> Either String Json
 field key value = maybe (Left ("Missing JSON field: " <> key)) Right (toObject value >>= O.lookup key)
+
 stringField :: String -> Json -> Either String String
 stringField key value = field key value >>= (maybe (Left ("Expected string: " <> key)) Right <<< toString)
+
 boolField :: String -> Json -> Either String Boolean
 boolField key value = field key value >>= (maybe (Left ("Expected boolean: " <> key)) Right <<< toBoolean)
+
 jsonArray :: Json -> Either String (Array Json)
 jsonArray = maybe (Left "Expected JSON array") Right <<< toArray
 

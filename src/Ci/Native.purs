@@ -9,9 +9,12 @@ import Foreign.Object (Object)
 
 type Result = { code :: Int, stdout :: String, stderr :: String }
 type Command = { program :: String, args :: Array String, env :: Object String, cwd :: String, timeout :: Int, output :: String -> Effect Unit }
+
 foreign import commandImpl :: Command -> Async Result
+
 command :: Command -> Aff Result
 command = toAff <<< commandImpl
+
 foreign import readText :: String -> Effect String
 foreign import writeText :: String -> String -> Effect Unit
 foreign import appendText :: String -> String -> Effect Unit
@@ -33,11 +36,15 @@ foreign import platform :: Effect { os :: String, arch :: String }
 foreign import argv :: Effect (Array String)
 foreign import data Port :: Type
 foreign import reservePortImpl :: Async { port :: Int, handle :: Port }
+
 reservePort :: Aff { port :: Int, handle :: Port }
 reservePort = toAff reservePortImpl
+
 foreign import closePortImpl :: Port -> Async Unit
+
 closePort :: Port -> Aff Unit
 closePort = toAff <<< closePortImpl
+
 foreign import onInterrupt :: Effect Unit -> Effect (Effect Unit)
 foreign import setArgs :: Array String -> Effect Unit
 

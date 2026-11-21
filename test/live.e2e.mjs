@@ -1,7 +1,8 @@
-// Explicit opt-in; npm test only selects *.test.mjs.
+// Explicit opt-in; bun run test only selects *.test.mjs.
 import { test } from 'bun:test';
 import { spawn } from 'node:child_process';
-import { all } from '../output/Sbx.Profiles/index.js';
+import { all } from '../output/Sbx.Database.Profiles/index.js';
+import {duckUiLive,studioLive} from './support/web-live.mjs';
 
 const selected=process.env.DBSANDBOX_E2E_DATABASE;
 if(selected && !all.some(db=>db.name===selected)) throw Error(`Unknown E2E database: ${selected}`);
@@ -17,3 +18,6 @@ for (const database of all.map(db=>db.name).filter(name=>!selected || name===sel
     child.on('close', code => { cleanup(); code === 0 ? resolve() : reject(Error(`Live E2E failed (${code})`)); });
   });
 }, 1800000);
+
+if(!selected||selected==='duckdb') test('duckdb UI: web queries, branch selection, browser opening and cleanup',duckUiLive,1800000);
+if(!selected||selected==='postgres') test('postgres Studio: browser readiness, custom URL and headless mode',studioLive,1800000);

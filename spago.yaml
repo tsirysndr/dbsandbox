@@ -10,6 +10,8 @@ package:
     - control
     - datetime
     - effect
+    - drizzle
+    - opentui
     - either
     - exceptions
     - foldable-traversable

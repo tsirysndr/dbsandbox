@@ -7,7 +7,7 @@ import Ci.Environment as Environment
 import Ci.Install as Install
 import Ci.Native as N
 import Ci.Release as Release
-import Sbx.Profiles as Profiles
+import Sbx.Database.Profiles as Profiles
 import Data.Foldable (for_)
 import Data.Array as A
 import Data.Either (Either(..))
@@ -34,8 +34,8 @@ dispatch = case _ of
   [ "e2e" ] -> for_ Profiles.all (E2E.run <<< _.name)
   [ "e2e", database ] -> E2E.run database
   args | A.take 1 args == [ "sandbox-cli" ] -> case A.uncons (A.drop 1 args) of
-    Just {head: database, tail: rest} -> case A.uncons rest of
-      Just {head: name, tail} -> E2E.sandboxCli database name tail
+    Just { head: database, tail: rest } -> case A.uncons rest of
+      Just { head: name, tail } -> E2E.sandboxCli database name tail
       Nothing -> C.demand "Missing sandbox name" false
     Nothing -> C.demand "Missing database profile" false
   [ "install", version ] -> Install.install version
