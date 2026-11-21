@@ -98,76 +98,25 @@ dbsandbox ui                     # Open the local dashboard in your browser
 dbsandbox tui                    # Open the native terminal dashboard
 ```
 
-`databases`, `doctor` and `engine status` also accept `--json`. Inventory marks
-the selected branch with `*` and colors it and `RUNNING` in neon teal. It reads
-saved state without creating empty configuration directories; unrelated containers
-are excluded. An unavailable runtime reports `UNKNOWN` rather than a stopped
-server, and returns a nonzero exit code.
+### Dashboards
 
-The Svelte dashboard uses bundled Tailwind CSS and Lucide SVG icons, with a dark
-background, square corners and purple (`#8129ff`) accents. RUNNING indicators
-stay teal green. Its quick search filters branches and
-databases through SQLite FTS5, with case-insensitive word and prefix matching.
-It works without a CDN or a separate frontend server.
+Choose a database to explore its branch graph, manage servers, copy connection
+URLs, and view or download logs. Use `/` to search and `?` for keyboard shortcuts.
+Dates use local time.
 
-Log filters highlight matching words. The Dates button toggles muted date prefixes.
-Lines without a source timestamp use capture time. All date prefixes use local
-time. Raw downloads retain the original text.
+Adjust CPU and memory in the VM settings. Resizing the shared Linux VM restarts
+its servers.
 
-Choose a database from the branch dropdown to view only its branches. Search and
-pagination stay within that database; the TUI uses Tab to open its database selector.
+For a fixed port or a headless host:
 
-The branch graph shows colored fork lanes using ZFS origins and creation dates.
-It is enabled by default; use the Graph/Table button on the web or `g` in the TUI.
-Terminal `[` / `]` keys pan deep graphs. Unknown or deleted parents stay disconnected
-and are labeled explicitly. Filtering hides parents outside the results rather than
-inventing a new connection. Dates always use local time: the browser timezone for
-the web UI and the host timezone for the TUI. Unavailable dates show `Unknown`. These are branch forks, not a database commit or merge history.
-
-Use `/` to focus the sticky branch search and `?` for the web keyboard shortcuts modal.
-Delete inactive branches with their Delete button or `d` on a highlighted row; confirmation is required. The selected branch, `main`, and the parent server dataset are protected.
-Shortcuts pause while typing in form fields or while a dialog is open.
-
-The branch table has 10/25/50-row pagination. The copy icon beside a connection
-copies its full URL to the clipboard while the displayed URL remains redacted.
-The **Logs** controls open monospaced database/container logs, VM console and
-boot logs, or captured operation output. Follow refreshes the viewer; pause it
-to inspect earlier output. A quick filter narrows displayed lines; Download `.txt`
-saves the full current snapshot, independently of the filter. Operation logs retain the latest 256 KiB for each
-of the last 50 tasks, with known credentials redacted.
-
-The dashboard lists configured servers and every ZFS data branch, including
-branches without an independent server. Those rows show **DATA ONLY**; use
-**Switch** to mount one in the parent sandbox. Switching a data-only branch
-restarts that parent server if it was running; other branch servers keep running.
-The terminal dashboard lists the same branches (Enter switches, `/` searches).
-
-The dashboard lists every configured server and branch. Start or stop servers,
-fork a branch, select a branch, or launch DuckDB UI and Drizzle Studio from its
-rows. New databases use the same defaults as the CLI. Database operations run
-one at a time, with progress shown in Tasks. The dashboard listens on loopback
-at the first free port from 8787; use `dbsandbox ui --port 8888 --no-open` for a
-fixed port or a headless host. Keep the command running. Ctrl-C closes the
-dashboard and its database UI sessions while database servers keep running.
-Connection URLs in the dashboard hide passwords; use `dbsandbox DATABASE url`
-when you need the credentials.
-
-CPU and memory fields override VM resources when starting a database. Linux
-databases share one engine: explicit resource overrides resize that VM and can
-restart its servers. Use the settings control on the **VM resources** card to
-change its CPU cores and memory in MiB; the dashboard asks before applying a
-restart. BSD start overrides apply to that database's VM. Blank fields retain
-the defaults or existing allocation.
+```sh
+dbsandbox ui --port 8888 --no-open
+```
 
 ### Terminal dashboard
 
-`dbsandbox tui` uses OpenTUI's native renderer through the local PureScript
-bindings: borderless panels, fuzzy search overlays and a Neovim-style status
-bar. It is bundled into the standalone executable, including its native library.
-Database operations run in child processes with piped output, so Docker builds
-and provisioning logs cannot overwrite the terminal UI.
-Nerd Font branch icons are enabled by default; use `DBSANDBOX_NERD_FONT=0 dbsandbox tui`
-for the standard symbol. Terminals cannot reliably report their selected font.
+Run `dbsandbox tui` for the terminal dashboard. Set `DBSANDBOX_NERD_FONT=0`
+if your font does not support Nerd Font icons.
 
 | Key | Action |
 | --- | --- |
@@ -191,14 +140,10 @@ for the standard symbol. Terminals cannot reliably report their selected font.
 | `?` | Show keyboard shortcuts |
 | `q` / `Ctrl-C` | Quit and close owned UI sessions |
 
-In the log viewer, use `v` to switch source, `f` to toggle follow, `j`/`k` or
-Page Up/Down to scroll, `h`/`l` to pan horizontally, `G` to follow the latest
-output, `/` to filter and highlight matches, `t` to toggle date prefixes, `d` to export the full snapshot to a text file, and Esc
-to close. Clipboard copying uses host clipboard tools when
-available, with OSC 52 as a terminal-dependent fallback.
+In the log viewer, `/` filters, `f` toggles follow, `t` toggles timestamps,
+and `d` exports logs as text.
 
-CLI help is always plain text. Use `--no-color` or `NO_COLOR=1` to disable
-colors in other CLI output and the TUI.
+Use `--no-color` or `NO_COLOR=1` to disable colors.
 
 ### Shell completion
 
@@ -222,17 +167,9 @@ Regenerate the Fish completion file after updating dbsandbox.
 
 ## Existing sandboxes
 
-Sandbox configuration, fork manifests and selected branches are stored in
-`$XDG_CONFIG_HOME/dbsandbox/state.sqlite` (default `~/.config/dbsandbox/state.sqlite`).
-Bun SQLite and the local PureScript Drizzle bindings provide transactions,
-WAL journaling and a versioned schema. The file has mode `0600`. The FTS5 index
-contains database names, branch names, guest OS and versions; credentials are
-excluded.
-
-Existing JSON configuration is imported transactionally on first access. The
-original files are retained as backups and are not imported again after changes
-or deletion in SQLite. Runtime resource names, ZFS data and guest databases are
-preserved:
+Saved configuration lives in `$XDG_CONFIG_HOME/dbsandbox/state.sqlite`
+(default `~/.config/dbsandbox/state.sqlite`). Existing configuration is imported
+automatically; database data stays in its ZFS volumes.
 
 ```sh
 dbsandbox postgres status
