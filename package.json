@@ -10,6 +10,7 @@
   "files": [
     "bin",
     "docs/assets/readme-banner.svg",
+    "docs/assets/tui-preview.png",
     "output/**/*.js",
     "output/package.json",
     "ui/generated"

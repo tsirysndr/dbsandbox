@@ -1,7 +1,5 @@
 ![Database branching: main forks into feature, fix-auth and add-index, with a nested seed-data branch](docs/assets/readme-banner.svg)
 
-# dbsandbox
-
 [![Test](https://github.com/tsirysndr/dbsandbox/actions/workflows/test.yml/badge.svg)](https://github.com/tsirysndr/dbsandbox/actions/workflows/test.yml)
 
 Database, search and authorization sandboxes in one PureScript CLI, powered by
@@ -22,6 +20,8 @@ dbsandbox mysql start --port 3307                # Start MySQL alongside MariaDB
 dbsandbox typesense start --password my-api-key  # Start Typesense with a custom API key
 dbsandbox chroma start                           # Start a Chroma vector database server
 ```
+
+![dbsandbox terminal dashboard showing database branches, a colored ZFS branch graph, local creation dates, and server status](docs/assets/tui-preview.png)
 
 ## Installation
 

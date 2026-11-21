@@ -72,8 +72,9 @@ build = do
   liftEffect do
     N.mkdir (staging <> "/docs/assets")
     N.copy "docs/assets/readme-banner.svg" (staging <> "/docs/assets/readme-banner.svg")
+    N.copy "docs/assets/tui-preview.png" (staging <> "/docs/assets/tui-preview.png")
   archive <- liftEffect (N.resolve ("dist/release/dbsandbox-" <> platform <> ".tar.gz"))
-  void $ C.run "tar" [ "-czf", archive, "-C", staging, "dbsandbox", "README.md", "LICENSE", "CHANGELOG.md", "docs/assets/readme-banner.svg" ]
+  void $ C.run "tar" [ "-czf", archive, "-C", staging, "dbsandbox", "README.md", "LICENSE", "CHANGELOG.md", "docs/assets/readme-banner.svg", "docs/assets/tui-preview.png" ]
 
 -- | Bun resolves OpenTUI's optional native imports while compiling, including
 -- | musl imports on glibc hosts. Install every variant before either build path.

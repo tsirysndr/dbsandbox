@@ -1,6 +1,10 @@
-# dbsandbox
+![Database branching with dbsandbox](https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/docs/assets/readme-banner.svg)
 
 Database sandboxes with parallel ZFS branches, a web dashboard, and a native TUI.
+
+![dbsandbox terminal dashboard with colored branch graphs, local creation dates, and server status](https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/docs/assets/tui-preview.png)
+
+## Installation
 
 ```sh
 npx dbsandbox --help
