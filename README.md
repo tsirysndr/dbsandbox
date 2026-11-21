@@ -18,35 +18,6 @@ dbsandbox typesense start --password my-api-key
 dbsandbox chroma start
 ```
 
-| Database | Command | Default Linux image | Default port | BSD mode |
-| --- | --- | --- | --- | --- |
-| PostgreSQL | `postgres` (`postgresql`, `pg`) | `postgres:18` | 5432 | Official server packages |
-| MariaDB | `mariadb` | `mariadb:12` | 3306 | Official server packages |
-| MySQL | `mysql` | `mysql:8.4` | 3306 | FreeBSD 8.4 / NetBSD 8.0 pkgsrc; binary availability varies |
-| Typesense | `typesense` | `typesense/typesense:30.2` | 8108 | Linux only |
-| Chroma | `chroma` | `chromadb/chroma:1.5.3` | 8000 | Linux only |
-| DuckDB | `duckdb` | `duckdb/duckdb:2.0.0` | 9494, Quack | Embedded file access; DuckDB >= 2 required |
-| Databend | `databend` | `datafuselabs/databend:latest` | 8000, HTTP SQL | Linux only |
-| TigerBeetle | `tigerbeetle` | `ghcr.io/tigerbeetle/tigerbeetle:latest` | 3000 | Linux only |
-| YugabyteDB | `yugabytedb` | `yugabytedb/yugabyte:2026.1.3.0-b100` | 5433, YSQL | Linux only |
-| Vearch | `vearch` | `vearch/vearch:latest` | 9001 | Linux only |
-| TimescaleDB | `timescale` | `timescale/timescaledb:latest-pg18` | 5432 | Linux only |
-| TiDB | `tidb` | `pingcap/tidb:latest` | 4000, MySQL | Linux only |
-| SpiceDB | `spicedb` | `authzed/spicedb:latest` + PostgreSQL 17 | 8443, HTTP gateway | Linux only |
-| SurrealDB | `surrealdb` | `surrealdb/surrealdb:latest` | 8000 | Linux only |
-| ScyllaDB | `scylladb` | `scylladb/scylla:latest` | 9042, CQL | Linux only |
-| Qdrant | `qdrant` | `qdrant/qdrant:latest` | 6333, HTTP | Linux only |
-| MongoDB | `mongodb` | `mongo:8` | 27017 | Linux only |
-| Cassandra | `cassandra` | `cassandra:5` | 9042, CQL | Linux only |
-| ClickHouse | `clickhouse` | `clickhouse/clickhouse-server:latest` | 8123, HTTP | Linux only |
-| ArangoDB | `arangodb` | `arangodb:latest` | 8529 | Linux only |
-| CockroachDB | `cockroachdb` | `cockroachdb/cockroach:latest` | 26257, PostgreSQL | Linux only |
-| SQLite | `sqlite` (`libsql`) | `ghcr.io/tursodatabase/libsql-server:latest` | 8080 | Linux only |
-
-Each database has its own state, branches and selection. All Linux containers
-share the Docker engine VM. PostgreSQL, MariaDB and MySQL on FreeBSD/NetBSD use a
-shared VM per database, with separate processes for parallel branches.
-
 ## Installation
 
 The host needs macOS Apple Silicon or Linux with KVM, bsdkrun **0.12.2 or newer**,
@@ -89,8 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/install.sh
 
 ## Existing sandboxes
 
-Existing `postgres-sbx`, `mariadb-sbx`, `duckdb-sbx` and `sqlite-sbx` state is
-adopted directly. The established resource names and configuration directories
+The established resource names and configuration directories
 are retained, including parallel-instance manifests and selected branches.
 There is no database copy or state rewrite to migrate:
 
@@ -101,6 +71,37 @@ dbsandbox duckdb url
 
 The visible command is `dbsandbox DATABASE`; resource names reported by bsdkrun
 can still contain the original tool names. `XDG_CONFIG_HOME` is respected.
+
+## Supported databases
+
+| Database | Command | Default Linux image | Default port | BSD mode |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | `postgres` (`postgresql`, `pg`) | `postgres:18` | 5432 | Official server packages |
+| MariaDB | `mariadb` | `mariadb:12` | 3306 | Official server packages |
+| MySQL | `mysql` | `mysql:8.4` | 3306 | FreeBSD 8.4 / NetBSD 8.0 pkgsrc; binary availability varies |
+| Typesense | `typesense` | `typesense/typesense:30.2` | 8108 | Linux only |
+| Chroma | `chroma` | `chromadb/chroma:1.5.3` | 8000 | Linux only |
+| DuckDB | `duckdb` | `duckdb/duckdb:2.0.0` | 9494, Quack | Embedded file access; DuckDB >= 2 required |
+| Databend | `databend` | `datafuselabs/databend:latest` | 8000, HTTP SQL | Linux only |
+| TigerBeetle | `tigerbeetle` | `ghcr.io/tigerbeetle/tigerbeetle:latest` | 3000 | Linux only |
+| YugabyteDB | `yugabytedb` | `yugabytedb/yugabyte:2026.1.3.0-b100` | 5433, YSQL | Linux only |
+| Vearch | `vearch` | `vearch/vearch:latest` | 9001 | Linux only |
+| TimescaleDB | `timescale` | `timescale/timescaledb:latest-pg18` | 5432 | Linux only |
+| TiDB | `tidb` | `pingcap/tidb:latest` | 4000, MySQL | Linux only |
+| SpiceDB | `spicedb` | `authzed/spicedb:latest` + PostgreSQL 17 | 8443, HTTP gateway | Linux only |
+| SurrealDB | `surrealdb` | `surrealdb/surrealdb:latest` | 8000 | Linux only |
+| ScyllaDB | `scylladb` | `scylladb/scylla:latest` | 9042, CQL | Linux only |
+| Qdrant | `qdrant` | `qdrant/qdrant:latest` | 6333, HTTP | Linux only |
+| MongoDB | `mongodb` | `mongo:8` | 27017 | Linux only |
+| Cassandra | `cassandra` | `cassandra:5` | 9042, CQL | Linux only |
+| ClickHouse | `clickhouse` | `clickhouse/clickhouse-server:latest` | 8123, HTTP | Linux only |
+| ArangoDB | `arangodb` | `arangodb:latest` | 8529 | Linux only |
+| CockroachDB | `cockroachdb` | `cockroachdb/cockroach:latest` | 26257, PostgreSQL | Linux only |
+| SQLite | `sqlite` (`libsql`) | `ghcr.io/tursodatabase/libsql-server:latest` | 8080 | Linux only |
+
+Each database has its own state, branches and selection. All Linux containers
+share the Docker engine VM. PostgreSQL, MariaDB and MySQL on FreeBSD/NetBSD use a
+shared VM per database, with separate processes for parallel branches.
 
 ## Parallel branches
 
