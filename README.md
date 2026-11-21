@@ -262,8 +262,10 @@ architecture; available architectures depend on the upstream tag.
 
 Databend, TigerBeetle, ClickHouse, Cassandra, ScyllaDB and YugabyteDB request
 6 GiB when creating a new engine, and grow smaller existing engines after a clean stop.
-Other configured resources are preserved; the engine is never shrunk. For
-parallel branches of heavier servers, resize the shared VM as needed:
+Other configured resources are preserved; the engine is never shrunk. ScyllaDB
+limits networking IOCBs to 1024 per server so parallel branches share the VM's
+async I/O capacity. For parallel branches of heavier servers, resize the shared
+VM as needed:
 
 ```sh
 bsdkrun docker stop

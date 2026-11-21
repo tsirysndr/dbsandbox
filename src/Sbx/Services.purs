@@ -86,7 +86,8 @@ scylladb = cassandra
       , "RUN sed -i -e '/^commitlog_sync:/d' -e '/^commitlog_sync_period/d' /etc/scylla/scylla.yaml && printf '\\ncommitlog_sync: batch\\n' >> /etc/scylla/scylla.yaml && chown scylla:scylla /etc/scylla/scylla.yaml"
       , script "/usr/local/bin/sbx-start" ["chown -R \"$(id -u scylla):$(id -g scylla)\" /var/lib/scylla", "chown scylla:scylla /proc/self/fd/1 /proc/self/fd/2", "exec runuser -u scylla -- /docker-entrypoint.py \"$@\""]
       , "ENTRYPOINT [\"/usr/local/bin/sbx-start\"]"]
-  , command = const (Just ["--smp", "1", "--memory", "1536M", "--overprovisioned", "1", "--developer-mode", "1", "--rpc-address", "0.0.0.0", "--broadcast-rpc-address", "127.0.0.1"])}
+  -- Bound per-server networking IOCBs so parallel branches share the VM AIO limit.
+  , command = const (Just ["--smp", "1", "--memory", "1536M", "--overprovisioned", "1", "--developer-mode", "1", "--rpc-address", "0.0.0.0", "--broadcast-rpc-address", "127.0.0.1", "--max-networking-io-control-blocks", "1024"])}
 
 -- PostgreSQL-wire services retain the shared host driver and Drizzle tools.
 timescale :: Profile
