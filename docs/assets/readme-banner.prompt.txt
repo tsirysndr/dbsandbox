@@ -1,0 +1,3 @@
+Final design brief: Minimal flat database branch-tree banner, inspired by the user-provided Xata screenshot. Solid charcoal background; solid dark gray cards; dark teal main card. Thin gray tree connectors. Main branches into feature, fix-auth and add-index; seed-data nests under fix-auth. Neon teal RUNNING statuses and dots. Monospaced typography throughout, including the dbsandbox title. No gradients, glow, shadows, texture, 3D effects or production label.
+
+Raster drafts were generated with the built-in image_gen tool. The final asset is a native SVG to guarantee flat colors and monospaced text.

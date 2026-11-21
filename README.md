@@ -1,4 +1,7 @@
+![Database branching: main forks into feature, fix-auth and add-index, with a nested seed-data branch](docs/assets/readme-banner.svg)
+
 # dbsandbox
+
 [![Test](https://github.com/tsirysndr/dbsandbox/actions/workflows/test.yml/badge.svg)](https://github.com/tsirysndr/dbsandbox/actions/workflows/test.yml)
 
 Database, search and authorization sandboxes in one PureScript CLI, powered by
@@ -13,6 +16,7 @@ dbsandbox postgres checkout feature              # Select feature; other servers
 
 dbsandbox mariadb start                          # Start a MariaDB server
 dbsandbox duckdb start linux 2.0.0               # Start DuckDB 2.0.0 with a Quack server
+dbsandbox duckdb ui                             # Open the running branch in DuckDB's web UI
 dbsandbox sqlite start                           # Start a libSQL HTTP server
 dbsandbox mysql start --port 3307                # Start MySQL alongside MariaDB on another port
 dbsandbox typesense start --password my-api-key  # Start Typesense with a custom API key
@@ -34,11 +38,11 @@ dbsandbox --help
 
 The formula installs the Docker CLI and bsdkrun dependencies.
 
-From source, use Node.js 22/24 and Bun:
+From source, use Bun 1.4.5 or newer (Node.js 22/24 is also used by Spago's toolchain):
 
 ```sh
-npm ci
-npm link
+bun install --frozen-lockfile
+bun link
 dbsandbox --help
 dbsandbox postgres doctor
 ```
@@ -46,7 +50,7 @@ dbsandbox postgres doctor
 To build one standalone executable:
 
 ```sh
-npm run build:bin
+bun run build:bin
 ./dist/dbsandbox --version
 ```
 
@@ -54,7 +58,7 @@ The core executable needs neither Node.js nor Bun at runtime. Optional host
 tools such as Drizzle Studio/drizzle-kit, pgcli/mycli and pgroll keep their
 respective host dependencies. Source installs include Drizzle's Node packages;
 standalone users can install `drizzle-kit`, `drizzle-orm` and the chosen driver
-globally with npm, and `uv` or `pipx` for the Python clients.
+globally with Bun, and `uv` or `pipx` for the Python clients.
 
 The GitHub release workflow builds macOS ARM64, Linux x86_64 and Linux ARM64
 archives and `SHA256SUMS`. `install.sh` consumes a published release, checks its
@@ -68,11 +72,155 @@ curl -fsSL https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/install.sh
 curl -fsSL https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/install.sh | sh -s -- v0.1.0
 ```
 
+## Global commands
+
+```sh
+dbsandbox ps                     # List running servers across all databases
+dbsandbox ps --all               # Include stopped servers and parallel branches
+dbsandbox ps --all --json        # Machine-readable inventory with passwords redacted
+dbsandbox databases              # List supported databases, versions, ports and guests
+dbsandbox doctor                 # Check host tools, runtime version and virtualization
+dbsandbox engine status          # Inspect the shared VM, memory, CPUs and image storage
+dbsandbox stop --all             # Stop configured servers; retain their data and engine
+dbsandbox ui                     # Open the local dashboard in your browser
+dbsandbox tui                    # Open the native terminal dashboard
+```
+
+`databases`, `doctor` and `engine status` also accept `--json`. Inventory marks
+the selected branch with `*` and colors it and `RUNNING` in neon teal. It reads
+saved state without creating empty configuration directories; unrelated containers
+are excluded. An unavailable runtime reports `UNKNOWN` rather than a stopped
+server, and returns a nonzero exit code.
+
+The Svelte dashboard uses bundled Tailwind CSS and Lucide SVG icons, with a dark
+background, square corners and purple (`#8129ff`) accents. RUNNING indicators
+stay teal green. Its quick search filters branches and
+databases through SQLite FTS5, with case-insensitive word and prefix matching.
+It works without a CDN or a separate frontend server.
+
+Log filters highlight matching words. The Dates button toggles muted date prefixes.
+Lines without a source timestamp use capture time. All date prefixes use local
+time. Raw downloads retain the original text.
+
+Choose a database from the branch dropdown to view only its branches. Search and
+pagination stay within that database; the TUI uses Tab to open its database selector.
+
+The branch graph shows colored fork lanes using ZFS origins and creation dates.
+It is enabled by default; use the Graph/Table button on the web or `g` in the TUI.
+Terminal `[` / `]` keys pan deep graphs. Unknown or deleted parents stay disconnected
+and are labeled explicitly. Filtering hides parents outside the results rather than
+inventing a new connection. Dates always use local time: the browser timezone for
+the web UI and the host timezone for the TUI. Unavailable dates show `Unknown`. These are branch forks, not a database commit or merge history.
+
+Use `/` to focus the sticky branch search and `?` for the web keyboard shortcuts modal.
+Delete inactive branches with their Delete button or `d` on a highlighted row; confirmation is required. The selected branch, `main`, and the parent server dataset are protected.
+Shortcuts pause while typing in form fields or while a dialog is open.
+
+The branch table has 10/25/50-row pagination. The copy icon beside a connection
+copies its full URL to the clipboard while the displayed URL remains redacted.
+The **Logs** controls open monospaced database/container logs, VM console and
+boot logs, or captured operation output. Follow refreshes the viewer; pause it
+to inspect earlier output. A quick filter narrows displayed lines; Download `.txt`
+saves the full current snapshot, independently of the filter. Operation logs retain the latest 256 KiB for each
+of the last 50 tasks, with known credentials redacted.
+
+The dashboard lists configured servers and every ZFS data branch, including
+branches without an independent server. Those rows show **DATA ONLY**; use
+**Switch** to mount one in the parent sandbox. Switching a data-only branch
+restarts that parent server if it was running; other branch servers keep running.
+The terminal dashboard lists the same branches (Enter switches, `/` searches).
+
+The dashboard lists every configured server and branch. Start or stop servers,
+fork a branch, select a branch, or launch DuckDB UI and Drizzle Studio from its
+rows. New databases use the same defaults as the CLI. Database operations run
+one at a time, with progress shown in Tasks. The dashboard listens on loopback
+at the first free port from 8787; use `dbsandbox ui --port 8888 --no-open` for a
+fixed port or a headless host. Keep the command running. Ctrl-C closes the
+dashboard and its database UI sessions while database servers keep running.
+Connection URLs in the dashboard hide passwords; use `dbsandbox DATABASE url`
+when you need the credentials.
+
+CPU and memory fields override VM resources when starting a database. Linux
+databases share one engine: explicit resource overrides resize that VM and can
+restart its servers. Use the settings control on the **VM resources** card to
+change its CPU cores and memory in MiB; the dashboard asks before applying a
+restart. BSD start overrides apply to that database's VM. Blank fields retain
+the defaults or existing allocation.
+
+### Terminal dashboard
+
+`dbsandbox tui` uses OpenTUI's native renderer through the local PureScript
+bindings: borderless panels, fuzzy search overlays and a Neovim-style status
+bar. It is bundled into the standalone executable, including its native library.
+Database operations run in child processes with piped output, so Docker builds
+and provisioning logs cannot overwrite the terminal UI.
+Nerd Font branch icons are enabled by default; use `DBSANDBOX_NERD_FONT=0 dbsandbox tui`
+for the standard symbol. Terminals cannot reliably report their selected font.
+
+| Key | Action |
+| --- | --- |
+| `Tab` | Choose the database shown in the branch list |
+| `g` | Toggle branch graph / table |
+| `[` / `]` | Pan graph lanes horizontally |
+| `j` / `k`, arrows | Move between servers |
+| `/`, `Ctrl-P` | Open fzf-style branch search; Enter jumps to a result |
+| `Enter` | Select the highlighted branch |
+| `b` | Fork a branch |
+| `d` | Delete an inactive branch, with confirmation |
+| `s` | Start or stop the selected server |
+| `u` / `U` | Open or close its database UI |
+| `y` | Copy its full connection URL |
+| `l` / `L` | View database logs / VM logs |
+| `o` | View captured operation output |
+| `n` | Start a database: `database [guest] [version] [CPU] [MiB]` |
+| `e` | Override shared VM CPU and memory |
+| `S` | Stop all configured servers, with confirmation |
+| `r` | Refresh |
+| `?` | Show keyboard shortcuts |
+| `q` / `Ctrl-C` | Quit and close owned UI sessions |
+
+In the log viewer, use `v` to switch source, `f` to toggle follow, `j`/`k` or
+Page Up/Down to scroll, `h`/`l` to pan horizontally, `G` to follow the latest
+output, `/` to filter and highlight matches, `t` to toggle date prefixes, `d` to export the full snapshot to a text file, and Esc
+to close. Clipboard copying uses host clipboard tools when
+available, with OSC 52 as a terminal-dependent fallback.
+
+CLI help is always plain text. Use `--no-color` or `NO_COLOR=1` to disable
+colors in other CLI output and the TUI.
+
+### Shell completion
+
+Completion is available for Bash, Zsh and Fish. Configure it once for your shell:
+
+```sh
+# Bash: add to ~/.bashrc
+source <(dbsandbox completion bash)
+
+# Zsh: add to ~/.zshrc
+autoload -Uz compinit && compinit
+source <(dbsandbox completion zsh)
+
+# Fish: generate the completion file
+mkdir -p ~/.config/fish/completions
+dbsandbox completion fish > ~/.config/fish/completions/dbsandbox.fish
+```
+
+Restart your shell or source its configuration after adding the Bash/Zsh lines.
+Regenerate the Fish completion file after updating dbsandbox.
+
 ## Existing sandboxes
 
-The established resource names and configuration directories
-are retained, including parallel-instance manifests and selected branches.
-There is no database copy or state rewrite to migrate:
+Sandbox configuration, fork manifests and selected branches are stored in
+`$XDG_CONFIG_HOME/dbsandbox/state.sqlite` (default `~/.config/dbsandbox/state.sqlite`).
+Bun SQLite and the local PureScript Drizzle bindings provide transactions,
+WAL journaling and a versioned schema. The file has mode `0600`. The FTS5 index
+contains database names, branch names, guest OS and versions; credentials are
+excluded.
+
+Existing JSON configuration is imported transactionally on first access. The
+original files are retained as backups and are not imported again after changes
+or deletion in SQLite. Runtime resource names, ZFS data and guest databases are
+preserved:
 
 ```sh
 dbsandbox postgres status
@@ -201,6 +349,33 @@ retains its data and configuration for `--branch NAME start` to retry.
 with confirmation; `--yes` bypasses the prompt. It preserves other databases and
 the shared Docker VM. An explicit `--branch NAME destroy` removes only that fork.
 
+## Database web UIs
+
+```sh
+dbsandbox duckdb ui                              # Start DuckDB's UI and open your browser
+dbsandbox duckdb --branch feature ui --port 4214  # Browse a specific parallel branch
+dbsandbox duckdb ui --no-open                    # Print the URL without opening a browser
+dbsandbox postgres studio                        # Start Drizzle Studio and open your browser
+dbsandbox mysql studio --port 4984                # Use another Studio port
+dbsandbox sqlite studio --no-open                 # Start Studio on a headless host
+```
+
+DuckDB's `ui` command requires a running Linux sandbox. It chooses a free host
+port starting at 4213, or uses `--port`. The UI runs in a temporary container
+and attaches the selected branch through Quack; it never opens the database
+file as a second writer. The branch appears as the `sbx` catalog. Keep the
+command running while using the UI; Ctrl-C removes its container and port
+forward, leaving the database server running.
+Stopping, deleting or recreating a database branch also closes its UI sessions.
+If another client changes the schema, run `CALL quack_clear_cache();` in the UI
+to refresh the attached catalog.
+
+`studio` opens `https://local.drizzle.studio` after its local server is ready.
+Custom ports and hosts are reflected in the URL; wildcard binds open through
+loopback. Both commands
+support `--no-open` and always print their URL. If automatic browser opening
+is unavailable, open that URL manually.
+
 ## Typesense and Chroma APIs
 
 Both services persist `/data` on their ZFS branch. `api` (also `http`) sends
@@ -288,15 +463,25 @@ Pinecone is excluded: its local emulator was discontinued upstream.
 
 ## Development and CI
 
+PureScript modules are grouped under `src/Sbx/Database`, `Runtime`, `Branch`,
+`State`, `Management`, `Cli` and `UI` (with separate `Web` and `Terminal`
+subfolders). Reusable bindings live in `packages/drizzle` and
+`packages/opentui`. The Svelte/Tailwind/Lucide frontend lives in `ui/src`.
+
 ```sh
-npm test                         # PureScript suites + Bun CLI, HTTP and CI tests
-npm run build:bin
-npm run test:e2e                  # all catalog live Linux suites, sequentially
-node bin/ci.js e2e duckdb         # one live profile
-SBX_E2E_OS=freebsd node bin/ci.js e2e postgres
-SBX_E2E_OS=netbsd node bin/ci.js e2e mariadb
-SBX_E2E_OS=freebsd node bin/ci.js e2e mysql
-SBX_E2E_OS=netbsd node bin/ci.js e2e mysql
+bun run format                   # purs-tidy and Prettier
+bun run format:check             # Check PureScript and frontend formatting
+```
+
+```sh
+bun run test                         # PureScript suites + Bun CLI, HTTP and CI tests
+bun run build:bin
+bun run test:e2e                  # all catalog live Linux suites, sequentially
+bun bin/ci.js e2e duckdb         # one live profile
+SBX_E2E_OS=freebsd bun bin/ci.js e2e postgres
+SBX_E2E_OS=netbsd bun bin/ci.js e2e mariadb
+SBX_E2E_OS=freebsd bun bin/ci.js e2e mysql
+SBX_E2E_OS=netbsd bun bin/ci.js e2e mysql
 
 fluentci run test unit
 fluentci run --workflow test      # Ubuntu x86_64, sudo and /dev/kvm
@@ -317,7 +502,7 @@ Logs stream with progress heartbeats. Diagnostics go to
 
 GitHub tests run one database per matrix job, including its unit tests and
 protocol-specific persistence/branch suite. Set `DBSANDBOX_E2E_DATABASE` to
-select a single service when running `npm run test:e2e` locally.
+select a single service when running `bun run test:e2e` locally.
 
 A `v*` tag matching `package.json` tests the project, builds three target
 archives, verifies executable architecture, and publishes them with checksums
