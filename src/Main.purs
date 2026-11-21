@@ -17,7 +17,7 @@ import Sbx.Cli.Help as Help
 import Sbx.Cli.Global as Global
 
 version :: String
-version = "0.1.0"
+version = "0.2.0"
 
 main :: Effect Unit
 main = do

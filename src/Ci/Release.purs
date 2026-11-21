@@ -69,12 +69,12 @@ build = do
   when (host.os == target.os && host.arch == target.arch) do
     result <- C.run executable [ "--version" ]
     C.fromEither (verifyVersion tag version result.stdout)
-  liftEffect $ for_ [ "README.md", "LICENSE" ] \file -> N.copy file (staging <> "/" <> file)
+  liftEffect $ for_ [ "README.md", "LICENSE", "CHANGELOG.md" ] \file -> N.copy file (staging <> "/" <> file)
   liftEffect do
     N.mkdir (staging <> "/docs/assets")
     N.copy "docs/assets/readme-banner.svg" (staging <> "/docs/assets/readme-banner.svg")
   archive <- liftEffect (N.resolve ("dist/release/dbsandbox-" <> platform <> ".tar.gz"))
-  void $ C.run "tar" [ "-czf", archive, "-C", staging, "dbsandbox", "README.md", "LICENSE", "docs/assets/readme-banner.svg" ]
+  void $ C.run "tar" [ "-czf", archive, "-C", staging, "dbsandbox", "README.md", "LICENSE", "CHANGELOG.md", "docs/assets/readme-banner.svg" ]
 
 -- Only invoked by the contents:write publish job, never by tests or builds.
 publish :: Aff Unit

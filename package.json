@@ -1,6 +1,6 @@
 {
   "name": "dbsandbox",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Database and search sandboxes with parallel ZFS branches",
   "license": "MIT",
   "type": "module",

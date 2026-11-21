@@ -69,7 +69,7 @@ release installer can download it:
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/install.sh | sh
 # Pin a release:
-curl -fsSL https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/install.sh | sh -s -- v0.1.0
+curl -fsSL https://raw.githubusercontent.com/tsirysndr/dbsandbox/main/install.sh | sh -s -- v0.2.0
 ```
 
 ## Global commands
