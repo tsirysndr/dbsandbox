@@ -28,17 +28,20 @@ the executable, then runs the opt-in Bun live suite. No Bash scripts are used.
 The project's Node FFI only supplies process/filesystem/network primitives;
 installation decisions, validations, assertions and cleanup are PureScript.
 Missing virtualization/networking tools fail the job; tests are never skipped.
+The DuckDB job also checks web UI reads/writes, branch isolation, forwarding and
+cleanup. The PostgreSQL job verifies Studio browser readiness and headless mode;
+both use harmless browser launchers to check URLs without opening a desktop.
 
 Use `--directory /path/to/dbsandbox` to select another checkout, or
 `--bsdkrun-version vX.Y.Z` on `all` to deliberately change the runtime release.
 The installer stores tools under the checkout's `.fluentci/tools/bsdkrun`.
 
 The SDK is regenerated from the pinned CLI into ignored `.sdk/` by
-`bootstrap.mjs`, then `build.mjs` uses the starter's locked npm/Spago tools to
+`bootstrap.mjs`, then `build.mjs` uses the starter's locked Bun/Spago tools to
 compile the component. Commit the manifests, both lockfiles and authored
 source. SDK copies, dependencies, generated WIT/metadata and Wasm output are
 build artifacts. Run only one build/inspection command in this directory at
-a time, as npm ci and componentization both replace generated files.
+a time, as bun install --frozen-lockfile and componentization both replace generated files.
 
 The live test uses a unique sandbox name and temporary configuration, removes
 its own container and ZFS volume in `finally`, and preserves an already-running

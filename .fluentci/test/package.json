@@ -10,7 +10,11 @@
   "name": "fluentci-test",
   "private": true,
   "scripts": {
-    "build": "node build.mjs"
+    "build": "bun build.mjs"
   },
-  "type": "module"
+  "type": "module",
+  "packageManager": "bun@1.4.5",
+  "trustedDependencies": [
+    "esbuild"
+  ]
 }
