@@ -49,7 +49,9 @@ The flake includes [bsdkrun](https://github.com/tsirysndr/bsdkrun) and the Docke
 On macOS, bsdkrun needs Homebrew's libkrun:
 
 ```sh
-brew install libkrun/krun/libkrun
+brew tap libkrun/krun
+brew trust libkrun/krun
+brew install libkrun
 BSDKRUN_IMPURE=1 nix profile install --impure github:tsirysndr/dbsandbox
 ```
 

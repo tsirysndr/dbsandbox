@@ -53,8 +53,10 @@ let
     pname = "dbsandbox";
     inherit version;
     src = source;
-    nativeBuildInputs = toolchain ++ [ pkgs.makeWrapper ]
-      ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.autoPatchelfHook ];
+    nativeBuildInputs = toolchain ++ [ pkgs.makeWrapper ];
+    # Bun appends its application to the executable; stripping or ELF fixups
+    # destroy that payload. The Nix-provided Bun already has its runtime loader.
+    dontFixup = true;
     buildInputs = linuxLibraries;
     configurePhase = ''
       runHook preConfigure
@@ -78,17 +80,17 @@ let
     installPhase = ''
       runHook preInstall
       install -Dm755 dist/dbsandbox "$out/bin/dbsandbox"
-      runHook postInstall
-    '';
-    postFixup = ''
       wrapProgram "$out/bin/dbsandbox" \
         --prefix PATH : ${lib.makeBinPath [ bsdkrun pkgs.docker-client ]} \
         ${lib.optionalString pkgs.stdenv.hostPlatform.isLinux
           "--prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath linuxLibraries}"}
+      runHook postInstall
     '';
     doInstallCheck = true;
     installCheckPhase = ''
-      "$out/bin/dbsandbox" --version | grep -Fx 'dbsandbox ${version}'
+      actual=$("$out/bin/dbsandbox" --version)
+      printf '%s\n' "$actual"
+      test "$actual" = 'dbsandbox ${version}'
     '';
     meta = {
       description = manifest.description;

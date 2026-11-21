@@ -53,7 +53,8 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew tap libkrun/krun
-          brew install libkrun/krun/libkrun
+          brew trust libkrun/krun
+          brew install libkrun
       - name: Build dbsandbox
         run: nix build ${{ matrix.flags }} --no-write-lock-file --print-build-logs .#dbsandbox
       - name: Check binary and development environment
