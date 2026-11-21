@@ -42,6 +42,8 @@ dataDir = "/var/lib/sqlite"
 profile :: Profile
 profile =
   { cli: "dbsandbox sqlite"
+  , engineMem: 2048
+  , dockerArgs: [], hasDatabase: true
   , http: Nothing
   , hasToken: false
   , keepStdin: false

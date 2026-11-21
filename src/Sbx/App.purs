@@ -66,6 +66,7 @@ runGeneric p = case _ of
   Token -> requireState p >>= \st -> say st.password $> 0
   Url -> url p
   Client args -> client p args
+  Api args -> httpClient p args
   Fancy args -> fancy p args
   Studio o -> studio p o
   Drizzle args -> drizzle p args
@@ -131,7 +132,7 @@ interactive p st (Container name) argv = do
   let flags = if tty then "-it" else "-i"
   Engine.toolImage p >>= case _ of
     Nothing -> Docker.dockerAttached ([ "exec", flags, name ] <> argv)
-    Just image -> Docker.dockerAttached ([ "run", "--rm", flags, "-v", Engine.mountPoint p st.branch <> ":" <> p.dataDir Linux, image ] <> argv)
+    Just image -> Docker.dockerAttached ([ "run", "--rm", flags, "--network", "container:" <> name, "-v", Engine.mountPoint p st.branch <> ":" <> p.dataDir Linux, image ] <> argv)
 
 -- | A command with the terminal's stdin, stdout and stderr bound to it.
 attached :: Runtime -> Boolean -> Array String -> Aff Int
@@ -191,6 +192,7 @@ waitReady p os st rt = do
       Container _ -> "the container exited while " <> p.product <> " was starting; `" <> p.cli <> " log` says why"
     case p.http of
       Nothing -> probeIn rt (p.ready os st.version (creds st))
+      Just api | api.health == "" -> probeIn rt (p.ready os st.version (creds st))
       Just api -> Http.healthy (p.url st.version (creds st) st.port <> api.health) (api.headers (creds st))
 
 -- | The profile's setup script, if any: idempotent, run as root through the
@@ -389,7 +391,7 @@ startLinux p o previous = do
     say ("Starting " <> p.product <> " " <> p.image version <> " as container '" <> Engine.containerName p <> "' in the Docker engine VM, branch " <> branchName <> " at " <> Engine.mountPoint p branchName <> " ...")
     -- The engine first: a stopped one hides the old container, which must
     -- go before the branch can move and before its name is reused.
-    Engine.ensureEngine
+    Engine.ensureEngineFor p
     Engine.removeContainer p
     Engine.ensureAttached p vol branchName
     ensurePort p port
@@ -731,14 +733,19 @@ client p extra = do
   { runtime, state: st } <- requireRunning p
   os <- stateOs st
   case p.client of
-    Http -> case p.http of
-      Nothing -> fail "HTTP profile configuration is missing"
-      Just api -> Http.client (p.url st.version (creds st) st.port) (api.headers (creds st)) extra
+    Http -> httpClient p extra
     Guest argv -> interactive p st runtime (argv os st.version (creds st) <> extra)
     Host argv -> do
       node <- liftEffect Native.nodePath
       root <- liftEffect Native.toolRoot
       Native.spawnInherit node (map (Native.pathJoin root) (Array.take 1 (argv st.port (creds st))) <> Array.drop 1 (argv st.port (creds st))) (Object.singleton "DATABASE_URL" (p.url st.version (creds st) st.port))
+
+httpClient :: Profile -> Array String -> Aff Int
+httpClient p extra = do
+  {state: st} <- requireRunning p
+  case p.http of
+    Nothing -> fail "This service does not expose an HTTP API"
+    Just api -> Http.client (p.url st.version (creds st) st.port) (api.headers (creds st)) extra
 
 -- | `uvx` or `pipx run`: how a Python CLI is run on the host without
 -- | installing it by hand.
@@ -760,7 +767,7 @@ fancyTool p extra = do
   { runtime, state: st } <- requireRunning p
   os <- stateOs st
   case p.fancy.cmd of
-    HttpTool -> client p extra
+    HttpTool -> httpClient p extra
     GuestTool argv -> interactive p st runtime (argv os st.version (creds st) <> extra)
     HostTool argv -> do
       runner <- pythonRunner

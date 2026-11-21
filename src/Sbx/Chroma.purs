@@ -8,6 +8,8 @@ import Sbx.Profile (ClientCmd(..), FancyCmd(..), Profile)
 profile :: Profile
 profile =
   { cli: "dbsandbox chroma", tool: "chroma-sbx", product: "Chroma"
+  , engineMem: 2048
+  , dockerArgs: [], hasDatabase: false
   , http: Just {health: "/api/v2/heartbeat", headers: const Object.empty}
   , hasToken: false, keepStdin: false, containerDockerfile: Nothing
   , versionAllowed: const true, runtimeCheck: Nothing

@@ -9,6 +9,8 @@ import Sbx.Profile (ClientCmd(..), FancyCmd(..), Profile)
 profile :: Profile
 profile =
   { cli: "dbsandbox typesense", tool: "typesense-sbx", product: "Typesense"
+  , engineMem: 2048
+  , dockerArgs: [], hasDatabase: false
   , http: Just {health: "/health", headers: \c -> Object.singleton "X-TYPESENSE-API-KEY" c.password}
   , hasToken: true, keepStdin: false, containerDockerfile: Nothing
   , versionAllowed: const true, runtimeCheck: Nothing

@@ -129,3 +129,5 @@ export const loopbackListener = port => () => {
   const addresses = output.split("\n").filter(l => l.startsWith("n")).map(l => l.slice(1));
   return addresses.length > 0 && addresses.every(a => /^127\.\d+\.\d+\.\d+:\d+$/.test(a) || a === `[::1]:${port}`);
 };
+
+export const basicAuth = user => password => 'Basic ' + Buffer.from(user + ':' + password).toString('base64');

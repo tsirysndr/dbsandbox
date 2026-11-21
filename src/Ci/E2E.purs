@@ -2,6 +2,7 @@ module Ci.E2E (run, sandboxCli, redact) where
 
 import Prelude
 import Ci.Database as Database
+import Ci.Workload as Workload
 import Ci.Common as C
 import Ci.Install as Install
 import Ci.Native as N
@@ -102,7 +103,7 @@ assertEqual :: String -> String -> Aff Unit
 assertEqual expected actual = C.demand ("Expected " <> show expected <> ", got " <> show actual) (actual == expected)
 
 freePort :: Aff Int
-freePort = bracket N.reservePort (N.closePort <<< _.handle) (pure <<< _.port)
+freePort = bracket N.reservePort (N.closePort <<< _.handle) (\p -> if p.port < 65533 then pure p.port else freePort)
 
 setup :: String -> Aff Context
 setup requested = do
@@ -159,12 +160,15 @@ body c = do
     ([ "start", guest ] <> (if guest == "linux" then [c.profile.defaultTag] else ["--mem", "2048"]) <> [ "--port", show port, "-d" ] <> (if c.profile.hasCredentials then [ "--user", "sbx_e2e", "--password", c.password, "--db", "sbx_e2e" ] else if c.profile.hasToken then ["--password", c.password] else []))
   query c "SELECT 42;" >>= assertEqual "42"
   let sqlArgs = case c.database of
-        "postgres" -> ["psql", "-tAc", "SELECT 42;"]
+        name | name == "postgres" || name == "timescale" || name == "yugabytedb" -> [c.profile.clientName, "-tAc", "SELECT 42;"]
+        "cockroachdb" -> ["cockroach", "--format=tsv", "--execute=SELECT 42"]
+        "tidb" -> ["mysql", "-N", "-B", "-e", "SELECT 42;"]
         "mysql" -> ["mysql", "-N", "-B", "-e", "SELECT 42;"]
         "mariadb" -> ["mariadb", "-N", "-B", "-e", "SELECT 42;"]
         "duckdb" -> ["duckdb", "-noheader", "-csv", "-c", "SELECT 42;"]
         _ -> ["sqlite3", "SELECT 42;"]
-  cli c sqlArgs >>= assertEqual "42"
+  output <- cli c sqlArgs
+  if c.database == "cockroachdb" then C.demand "Cockroach SQL client failed" (S.contains (S.Pattern "42") output) else assertEqual "42" output
   when (c.profile.hasCredentials || c.profile.hasToken) do
     rejected <- attempt $ queryWith c [] (Just "wrong-password") "SELECT 1;"
     C.demand "Incorrect password was accepted" (either (const true) (const false) rejected)
@@ -263,7 +267,9 @@ cleanup c = do
 
 run :: String -> Aff Unit
 run database = bracket (setup database) cleanup \c -> do
-  result <- attempt (if c.database == "typesense" || c.database == "chroma" then bodyApi c else body c)
+  result <- attempt (case Workload.find c.database of
+    Just workload -> bodyWorkload c workload
+    Nothing -> if c.database == "tigerbeetle" then bodyWorkload c tigerWorkload else if c.database == "typesense" || c.database == "chroma" then bodyApi c else body c)
   case result of
     Left err -> record c ("FAIL: " <> message err) *> throwError err
     Right _ -> pure unit
@@ -339,3 +345,71 @@ bodyApi c = do
   check [] "main_collection"
   pass c "HTTP collections persist across independent, nested ZFS branches, selection changes, stop/start and port changes"
   liftEffect (Ref.write true c.succeeded)
+
+
+-- One lifecycle suite for every native/API workload, with protocol fixtures.
+bodyWorkload :: Context -> Workload.Workload -> Aff Unit
+bodyWorkload c workload = do
+  guest <- C.fallback "SBX_E2E_OS" "linux"
+  C.demand "This profile supports Linux guests only" (guest == "linux")
+  before <- runtime c ["docker", "status", "--json"] >>= C.fromEither <<< C.jsonSuffix
+  wasRunning <- C.fromEither (C.boolField "running" before)
+  liftEffect (Ref.write wasRunning c.engineWasRunning)
+  port <- freePort
+  liftEffect (Ref.write true c.started)
+  void $ cliWith c (defaultOptions {timeout = 900000}) (["start", "linux", c.profile.defaultTag, "--port", show port, "-d"] <> if c.profile.hasCredentials then ["--user", c.profile.defaults.user, "--password", c.password] <> if c.profile.hasDatabase then ["--db", c.profile.defaults.db] else [] else if c.profile.hasToken then ["--password", c.password] else [])
+  for_ workload.seed (void <<< cli c)
+  let check selected expected = do
+        output <- cli c (selected <> workload.read)
+        C.demand ("Expected persisted marker: " <> expected) (S.contains (S.Pattern expected) output)
+  check [] workload.original
+  when (c.profile.hasToken || c.profile.hasCredentials) do
+    case c.profile.http, A.head workload.read of
+      Just endpoint, Just "api" -> do
+        address <- cli c ["url"]
+        spec <- C.fromEither (Http.parse (A.drop 1 workload.read))
+        let bad = endpoint.headers {user: c.profile.defaults.user, password: "wrong-password", db: c.profile.defaults.db}
+        rejected <- Http.request address bad spec 10000
+        C.demand "Invalid API credentials were accepted" (rejected.status == 401 || rejected.status == 403)
+      _, _ -> pure unit
+  void $ cli c ["branch", "feature"]
+  let feature = ["--branch", "feature"]
+  check feature workload.original
+  void $ cli c (feature <> workload.write)
+  check feature workload.forked
+  root <- cli c workload.read
+  C.demand "Fork modified parent data" (not (S.contains (S.Pattern workload.forked) root))
+  void $ cli c ["branch", "nested", "--from", "feature"]
+  check ["--branch", "nested"] workload.forked
+  mainUrl <- cli c ["url"]
+  branchUrl <- cli c (feature <> ["url"])
+  C.demand "Fork reused the parent port" (mainUrl /= branchUrl)
+  void $ cli c ["checkout", "feature"]
+  check [] workload.forked
+  void $ cli c ["checkout", "main"]
+  void $ cli c ["stop"]
+  check feature workload.forked
+  void $ cli c ["start", "-d"]
+  check [] workload.original
+  void $ cli c (feature <> ["stop"])
+  check ["--branch", "nested"] workload.forked
+  void $ cli c (feature <> ["start", "-d"])
+  check feature workload.forked
+  void $ cli c ["branch", "-d", "nested"]
+  void $ cli c ["branch", "-d", "feature"]
+  void $ cli c ["stop"]
+  nextPort <- freePort
+  void $ cli c ["start", "--port", show nextPort, "-d"]
+  check [] workload.original
+  pass c "protocol CRUD, nested forks, isolated data, selection, independent stop/start and port changes"
+  liftEffect (Ref.write true c.succeeded)
+
+tigerWorkload :: Workload.Workload
+tigerWorkload =
+  { seed: [tigerCommand "create_accounts id=1 code=314159 ledger=1;"]
+  , read: tigerCommand "lookup_accounts id=1,id=2;"
+  , write: tigerCommand "create_accounts id=2 code=271828 ledger=1;"
+  , original: "314159", forked: "271828" }
+
+tigerCommand :: String -> Array String
+tigerCommand command' = ["exec", "sh", "-c", "printf '%s\\n' '" <> command' <> "' | tigerbeetle repl --cluster=0 --addresses=127.0.0.1:3000"]

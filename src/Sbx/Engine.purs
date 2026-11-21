@@ -6,6 +6,7 @@ module Sbx.Engine
   ( mountPoint
   , containerName
   , ensureEngine
+  , ensureEngineFor
   , runtimeVersionAllowed
   , engineRunning
   , ensureAttached
@@ -73,11 +74,17 @@ runtimeVersionAllowed raw = fromMaybe false do
 -- | resumed as it is afterwards (`bsdkrun docker start --cpus/--mem` sizes
 -- | it; the tools do not).
 ensureEngine :: Aff Unit
-ensureEngine = do
+ensureEngine = ensureEngineMemory 2048
+
+ensureEngineFor :: Profile -> Aff Unit
+ensureEngineFor p = ensureEngineMemory p.engineMem
+
+ensureEngineMemory :: Int -> Aff Unit
+ensureEngineMemory mem = do
   st <- Docker.status
   unless st.running do
     say
-      ( if isNothing (toMaybe st.machineId) then "Creating the Docker engine VM '" <> Docker.machineName <> "' (2 vCPU, 2048 MiB, 20G image store; shared by every Linux sandbox) ..."
+      ( if isNothing (toMaybe st.machineId) then "Creating the Docker engine VM '" <> Docker.machineName <> "' (2 vCPU, " <> show mem <> " MiB, 20G image store; shared by every Linux sandbox) ..."
         else "Starting the Docker engine VM '" <> Docker.machineName <> "' ..."
       )
     -- Restarting a live proxy loses its record of existing gvproxy forwards.
@@ -90,12 +97,14 @@ ensureEngine = do
       -- snapshots need ext4 rather than the VM's virtio-fs root on Linux.
       -- Only choose a disk size for a new VM; existing engines keep their data.
       code <- Native.runBsdkrun
-        [ "docker", "start", "--cpus", "2", "--mem", "2048"
+        [ "docker", "start", "--cpus", "2", "--mem", show mem
         , "--publish-bind", "127.0.0.1", "--disk-size", "20G"
         ]
       unless (code == 0) $ throwError (error "starting the Docker engine failed")
     else
-      void (Docker.start { cpus: 2, mem: 2048, publishBind: Just "127.0.0.1" })
+      do
+        code <- Native.runBsdkrun ["docker", "start", "--publish-bind", "127.0.0.1"]
+        unless (code == 0) $ throwError (error "resuming the Docker engine failed")
 
 heldByEngine :: ZfsVolumeInfo -> Boolean
 heldByEngine vol = Array.any (\a -> toMaybe a.machineName == Just Docker.machineName) vol.attachedTo
@@ -201,7 +210,7 @@ runArgs p st c =
       -- On every interface of the VM (gvproxy cannot reach its loopback);
       -- the engine binds it to 127.0.0.1 on the host.
       <> (if p.serves Linux st.version then [ "-p", show st.port <> ":" <> show p.guestPort ] else [])
-      <> env <> [ serverImage p st.version ] <> fromMaybe [] (p.command st.version)
+      <> p.dockerArgs <> env <> [ serverImage p st.version ] <> fromMaybe [] (p.command st.version)
   in args
 
 runContainer :: Profile -> State -> Creds -> Aff Unit

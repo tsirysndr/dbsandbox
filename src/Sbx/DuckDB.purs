@@ -31,6 +31,8 @@ versionAllowed ref =
 profile :: Profile
 profile =
   { cli: "dbsandbox duckdb"
+  , engineMem: 2048
+  , dockerArgs: [], hasDatabase: true
   , http: Nothing
   , hasToken: true
   , keepStdin: true

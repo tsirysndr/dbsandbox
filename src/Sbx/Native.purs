@@ -91,3 +91,5 @@ foreign import runBsdkrunImpl :: Array String -> Async Int
 
 foreign import randomPassword :: Effect String
 foreign import loopbackListener :: Int -> Effect Boolean
+
+foreign import basicAuth :: String -> String -> String

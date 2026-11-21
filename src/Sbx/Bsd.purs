@@ -55,6 +55,7 @@ run p os = case _ of
   Branch o -> branch p o
   Checkout o -> checkout p o
   Url -> requireState p >>= \st -> say ("file " <> databaseFile st.db <> " in the BSD guest (no server)") $> 0
+  Api _ -> fail "HTTP API is Linux only"
   Client args -> client p os args
   Studio _ -> fail "Drizzle Studio does not support embedded DuckDB"
   Drizzle _ -> fail "drizzle-kit does not support embedded DuckDB"

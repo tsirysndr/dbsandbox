@@ -58,6 +58,9 @@ type Migrations =
 
 type Profile =
   { cli :: String -- ^ user-facing invocation, independent from persistent resource names
+  , engineMem :: Int -- ^ initial shared engine RAM; existing engine settings are preserved
+  , dockerArgs :: Array String
+  , hasDatabase :: Boolean
   , http :: Maybe { health :: String, headers :: Creds -> Object String }
   , hasToken :: Boolean
   , keepStdin :: Boolean

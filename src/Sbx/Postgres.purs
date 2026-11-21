@@ -10,6 +10,8 @@ import Sbx.Profile (ClientCmd(..), FancyCmd(..), Os(..), Profile, shellQuote, wi
 profile :: Profile
 profile =
   { cli: "dbsandbox postgres"
+  , engineMem: 2048
+  , dockerArgs: [], hasDatabase: true
   , http: Nothing
   , hasToken: false
   , keepStdin: false
