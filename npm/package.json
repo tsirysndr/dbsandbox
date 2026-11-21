@@ -1,5 +1,5 @@
 {
-  "name": "dbsandbox",
+  "name": "@tsiry/dbsandbox",
   "version": "0.2.0",
   "description": "Database sandboxes with parallel ZFS branches, web and terminal dashboards. Installs the prebuilt native CLI.",
   "license": "MIT",

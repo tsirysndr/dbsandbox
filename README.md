@@ -62,9 +62,9 @@ Build with `nix build` (macOS: `BSDKRUN_IMPURE=1 nix build --impure`).
 Or use npm (Node.js 18+):
 
 ```sh
-npx dbsandbox --help
+npx @tsiry/dbsandbox --help
 # Or install globally:
-npm install -g dbsandbox
+npm install -g @tsiry/dbsandbox
 ```
 
 The npm package downloads the matching GitHub release, verifies `SHA256SUMS`,

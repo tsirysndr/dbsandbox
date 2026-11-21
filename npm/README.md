@@ -7,16 +7,16 @@ Database sandboxes with parallel ZFS branches, a web dashboard, and a native TUI
 ## Installation
 
 ```sh
-npx dbsandbox --help
-npx dbsandbox postgres start
-npx dbsandbox ui
-npx dbsandbox tui
+npx @tsiry/dbsandbox --help
+npx @tsiry/dbsandbox postgres start
+npx @tsiry/dbsandbox ui
+npx @tsiry/dbsandbox tui
 ```
 
 Or install globally:
 
 ```sh
-npm install -g dbsandbox
+npm install -g @tsiry/dbsandbox
 dbsandbox --help
 ```
 

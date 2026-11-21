@@ -21,7 +21,7 @@ function fixture(){
 }
 
 test('npm metadata stays aligned with releases and maps all supported hosts',()=>{
- const pkg=require('../npm/package.json'),project=require('../package.json');expect(pkg.name).toBe('dbsandbox');expect(pkg.version).toBe(project.version);expect(pkg.dependencies['@bsdkrun/cli']).toBe('^0.12.2');expect(pkg.bin.dbsandbox).toBe('bin/dbsandbox.js');
+ const pkg=require('../npm/package.json'),project=require('../package.json');expect(pkg.name).toBe('@tsiry/dbsandbox');expect(pkg.version).toBe(project.version);expect(pkg.dependencies['@bsdkrun/cli']).toBe('^0.12.2');expect(pkg.bin.dbsandbox).toBe('bin/dbsandbox.js');
  expect(detect('darwin','arm64').target).toBe('darwin-aarch64');expect(detect('linux','x64').target).toBe('linux-x86_64');expect(detect('linux','arm64').target).toBe('linux-arm64');for(const [os,arch]of [['darwin','x64'],['win32','x64'],['linux','ia32']])expect(()=>detect(os,arch)).toThrow('unsupported platform');
 });
 
@@ -53,7 +53,7 @@ test('packed npm package supports npx with install scripts disabled and includes
   const consumer=join(f.dir,'consumer');mkdirSync(consumer);const options={env:{...f.env,npm_config_cache:join(f.dir,'cache')},cwd:f.dir};
   let result=await run('npm',['pack',f.bsd,'--json','--pack-destination',f.dir],options);expect(result.status,result.stderr).toBe(0);const bsdPack=join(f.dir,JSON.parse(result.stdout)[0].filename);
   result=await run('npm',['pack',f.pkg,'--json','--pack-destination',f.dir],options);expect(result.status,result.stderr).toBe(0);const info=JSON.parse(result.stdout)[0],paths=info.files.map(f=>f.path);expect(paths).toContain('bin/dbsandbox.js');expect(paths).toContain('LICENSE');expect(paths.some(path=>path.startsWith('binaries/')||path.startsWith('node_modules/'))).toBe(false);expect(paths.some(path=>path.endsWith('.purs'))).toBe(false);
-  result=await run('npm',['install','--prefix',consumer,'--ignore-scripts','--package-lock=false','--no-audit','--no-fund',bsdPack,join(f.dir,info.filename)],options);expect(result.status,result.stderr).toBe(0);expect(existsSync(join(consumer,'node_modules','dbsandbox','binaries','dbsandbox'))).toBe(false);
-  result=await run('npx',['--no-install','dbsandbox','--version'],{env:options.env,cwd:consumer});expect(result.status,result.stderr).toBe(0);expect(result.stdout.trim()).toBe('dbsandbox 0.2.0');expect(f.requests).toContain('/v0.2.0/'+f.asset);
+  result=await run('npm',['install','--prefix',consumer,'--ignore-scripts','--package-lock=false','--no-audit','--no-fund',bsdPack,join(f.dir,info.filename)],options);expect(result.status,result.stderr).toBe(0);expect(existsSync(join(consumer,'node_modules','@tsiry','dbsandbox','binaries','dbsandbox'))).toBe(false);
+  result=await run('npx',['--no-install','@tsiry/dbsandbox','--version'],{env:options.env,cwd:consumer});expect(result.status,result.stderr).toBe(0);expect(result.stdout.trim()).toBe('dbsandbox 0.2.0');expect(f.requests).toContain('/v0.2.0/'+f.asset);
  }finally{f.close();}
 });
