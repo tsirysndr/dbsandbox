@@ -1,5 +1,5 @@
 -- | Independent BSD database processes over separate dataset mountpoints.
-module Sbx.BsdServer (machine, directory, script, start, stop, running, unmount, client, endpoint) where
+module Sbx.BsdServer (machine, directory, script, mysqlScript, start, stop, running, unmount, client, endpoint) where
 import Prelude
 import Bsdkrun as B
 import Bsdkrun.Port as Port
@@ -45,6 +45,8 @@ script p st action =
       "status" -> pgStatus
       "stop" -> "if (" <> pgStatus <> ") >/dev/null 2>&1; then " <> pg "-m fast -w stop" <> "; fi"
       _ -> "if ! (" <> pgStatus <> "); then if [ -f " <> q (pgData <> "/postmaster.pid") <> " ] && [ \"$(sed -n '2p' " <> q (pgData <> "/postmaster.pid") <> ")\" != " <> q pgData <> " ]; then rm -f " <> q (pgData <> "/postmaster.pid") <> "; fi; " <> pg ("-l " <> q (dir <> "/sbx-server.log") <> " -o " <> q ("-p " <> show (port p st) <> " -h 0.0.0.0 -k " <> dir) <> " -w start") <> "; fi"
+    "MySQL" -> if action == "ready" then mysqlScript dir (port p st) "status" <> " && MYSQL_PWD=" <> q st.password <> " mysql --no-defaults --protocol=TCP -h 127.0.0.1 -P " <> show (port p st) <> " -u " <> q st.user <> " " <> q st.db <> " -Nse 'SELECT 1'"
+      else mysqlScript dir (port p st) action
     "MariaDB" -> case action of
       "status" -> if I.isInstance p.tool then mysqlStatus else (if st.os == "netbsd" then "if [ -x /etc/rc.d/mariadb ]; then /etc/rc.d/mariadb onestatus; else /etc/rc.d/mysqld onestatus; fi" else "service mysql-server onestatus")
       "stop" -> if I.isInstance p.tool then "if " <> mysqlStatus <> "; then kill -TERM \"$(cat " <> q pid <> ")\"; i=0; while " <> mysqlStatus <> "; do i=$((i+1)); [ $i -lt 120 ] || exit 1; sleep 1; done; fi"
@@ -52,6 +54,18 @@ script p st action =
       _ -> if not (I.isInstance p.tool) then (if st.os == "netbsd" then "if [ -x /etc/rc.d/mariadb ]; then /etc/rc.d/mariadb onestart; else /etc/rc.d/mysqld onestart; fi" else "service mysql-server onestart")
         else "server=$(command -v mariadbd || command -v mysqld); owner=mysql; if [ \"$(uname -s)\" = NetBSD ] && id -u mariadb >/dev/null 2>&1; then owner=mariadb; fi; if ! (" <> mysqlStatus <> "); then chown -R \"$owner:$owner\" " <> q dir <> "; nohup \"$server\" --no-defaults --user=\"$owner\" --datadir=" <> q dir <> " --port=" <> show st.port <> " --bind-address=0.0.0.0 --socket=" <> q (dir <> "/sbx.sock") <> " --pid-file=" <> q pid <> " --log-error=" <> q (dir <> "/sbx-server.log") <> " > /dev/null 2>&1 < /dev/null & fi"
     _ -> "test -d " <> q dir
+
+-- MySQL's X Plugin would otherwise collide at port 33060 between branches.
+-- Use the same explicit process layout for the parent and its clones.
+mysqlScript :: String -> Int -> String -> String
+mysqlScript dir n action =
+  let q = shellQuote
+      pid = dir <> "/sbx-branch.pid"
+      status = "test -s " <> q pid <> " && ps -ww -p \"$(cat " <> q pid <> ")\" -o args= | grep -F -- " <> q ("--datadir=" <> dir)
+  in case action of
+    "status" -> status
+    "stop" -> "if " <> status <> "; then kill -TERM \"$(cat " <> q pid <> ")\"; i=0; while " <> status <> "; do i=$((i+1)); [ $i -lt 120 ] || exit 1; sleep 1; done; fi"
+    _ -> "if ! (" <> status <> "); then chown -R mysql:mysql " <> q dir <> "; rm -f " <> q pid <> " " <> q (dir <> "/sbx.sock") <> " " <> q (dir <> "/sbx.sock.lock") <> "; nohup mysqld --no-defaults --user=mysql --datadir=" <> q dir <> " --port=" <> show n <> " --bind-address=0.0.0.0 --skip-log-bin --mysqlx=0 --socket=" <> q (dir <> "/sbx.sock") <> " --pid-file=" <> q pid <> " --log-error=" <> q (dir <> "/sbx-server.log") <> " > /dev/null 2>&1 < /dev/null & fi"
 
 execute :: Profile -> State -> String -> Aff Boolean
 execute p st action = do
@@ -105,7 +119,7 @@ start p st = do
     unless ready (delay (Milliseconds 1000.0) *> waitAgent box (n - 1))
   waitReady 0 = throwError (error "BSD branch server did not become ready")
   waitReady n = do
-    ready <- execute p st "status"
+    ready <- execute p st (if p.product == "MySQL" then "ready" else "status")
     unless ready (delay (Milliseconds 1000.0) *> waitReady (n - 1))
 
 stop :: Profile -> State -> Aff Unit
@@ -127,7 +141,7 @@ client p st extra = do
   box <- B.get m.id
   let args = case p.product of
         "PostgreSQL" -> ["sh", "-c", "PGPASSWORD=" <> shellQuote st.password <> " PATH=/usr/local/bin:/usr/pkg/bin:$PATH exec psql -h 127.0.0.1 -p " <> show st.port <> " -U " <> shellQuote st.user <> " -d " <> shellQuote st.db <> " \"$@\"", "psql"] <> extra
-        "MariaDB" -> withBsdPath ("mariadb -h 127.0.0.1 -P " <> show st.port <> " -u " <> shellQuote st.user <> " --password=" <> shellQuote st.password <> " " <> shellQuote st.db)
+        product | product == "MariaDB" || product == "MySQL" -> withBsdPath ((if product == "MySQL" then "mysql" else "mariadb") <> " -h 127.0.0.1 -P " <> show st.port <> " -u " <> shellQuote st.user <> " --password=" <> shellQuote st.password <> " " <> shellQuote st.db) <> extra
         _ -> ["sh", "-c", "PATH=/usr/local/bin:/usr/pkg/bin:$PATH; exec duckdb " <> shellQuote (directory p st <> "/" <> st.db <> ".duckdb") <> " \"$@\"", "duckdb"] <> extra
   tty <- liftEffect N.isTty
   Sandbox.execAttached tty args box

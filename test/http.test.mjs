@@ -22,6 +22,10 @@ test('API profiles separate MySQL from MariaDB and keep tokens out of URLs and c
   expect(mysql.ready({})('8.4')(mysql.defaults).join(' ')).toContain('SELECT 1');
   expect(typesense.http.value0.headers({password:'secret'})).toEqual({'X-TYPESENSE-API-KEY':'secret'});
   expect(typesense.url('30.2')({password:'secret'})(8108)).not.toContain('secret');
+  expect(mysql.linuxOnly).toBe(false);
+  const uri=new URL(mysql.url('8.4')({user:'a@b',password:'quote\'and\\slash:/@',db:'my db'})(3306));
+  expect(decodeURIComponent(uri.password)).toBe('quote\'and\\slash:/@');
+  expect(decodeURIComponent(uri.pathname.slice(1))).toBe('my db');
   for(const p of [typesense,chroma]) {expect(p.dataDir({})).toBe('/data');expect(p.linuxOnly).toBe(true);expect(p.dialect).toBe('');}
   expect(chroma.http.value0.headers({password:''})).toEqual({});
 });

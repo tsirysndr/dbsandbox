@@ -11,6 +11,8 @@ import { instanceName, volumeName, validName } from '../output/Sbx.Identity/inde
 import { script } from '../output/Sbx.BsdServer/index.js';
 import { writeJson, forward, lock, unlock } from '../output/Sbx.ParallelNative/index.js';
 import { profile } from '../output/Sbx.Postgres/index.js';
+import { profile as mysql } from '../output/Sbx.MySQL/index.js';
+import { FreeBSD, NetBSD } from '../output/Sbx.Profile/index.js';
 import { promise } from './support/aff.mjs';
 
 test('automatic ports skip stopped reservations and listeners, explicit collisions fail', async () => {
@@ -43,7 +45,7 @@ test('branch metadata lock rejects overlap and reclaims a dead owner', () => {
 });
 
 test('BSD start scripts have valid syntax and separate data, ports, PID files and sockets', () => {
-  for (const os of ['freebsd','netbsd']) for (const product of ['PostgreSQL','MariaDB']) {
+  for (const os of ['freebsd','netbsd']) for (const product of ['PostgreSQL','MariaDB','MySQL']) {
     const p = {...profile, product, tool:'test-sbx.branch-fork'};
     const st = {os,port:15433,user:'example',password:'never-log-this',db:'db',branch:'fork'};
     for (const action of ['start','stop','status']) {
@@ -88,5 +90,19 @@ test('a missing selected branch fails closed; checkout can recover the selection
   } finally {
     if (saved === undefined) delete process.env.XDG_CONFIG_HOME; else process.env.XDG_CONFIG_HOME = saved;
     rmSync(dir,{recursive:true,force:true});
+  }
+});
+
+
+test('MySQL BSD provisioning scripts parse and keep rc services disabled until ZFS is mounted', () => {
+  for(const os of [FreeBSD.value, NetBSD.value]) {
+    const body=mysql.provision(os).value0;
+    const result=spawnSync('/bin/sh',['-n'],{input:body,encoding:'utf8'});
+    expect(result.status,result.stderr).toBe(0);
+    expect(body).toContain('--initialize-insecure');
+    expect(body).toContain('NO_BACKSLASH_ESCAPES');
+    expect(body).not.toContain('mysql_enable=YES');
+    expect(body).not.toContain('mysqld=YES\n');
+    expect(body).toContain('--mysqlx=0');
   }
 });

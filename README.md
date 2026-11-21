@@ -22,14 +22,14 @@ dbsandbox chroma start
 | --- | --- | --- | --- | --- |
 | PostgreSQL | `postgres` (`postgresql`, `pg`) | `postgres:18` | 5432 | Official server packages |
 | MariaDB | `mariadb` | `mariadb:12` | 3306 | Official server packages |
-| MySQL | `mysql` | `mysql:8.4` | 3306 | Linux only |
+| MySQL | `mysql` | `mysql:8.4` | 3306 | FreeBSD 8.4 / NetBSD 8.0 packages |
 | Typesense | `typesense` | `typesense/typesense:30.2` | 8108 | Linux only |
 | Chroma | `chroma` | `chromadb/chroma:1.5.3` | 8000 | Linux only |
 | DuckDB | `duckdb` | `duckdb/duckdb:2.0.0` | 9494, Quack | Embedded file access; DuckDB >= 2 required |
 | SQLite | `sqlite` (`libsql`) | `ghcr.io/tursodatabase/libsql-server:latest` | 8080 | Linux only |
 
 Each database has its own state, branches and selection. All Linux containers
-share the Docker engine VM. PostgreSQL and MariaDB on FreeBSD/NetBSD use a
+share the Docker engine VM. PostgreSQL, MariaDB and MySQL on FreeBSD/NetBSD use a
 shared VM per database, with separate processes for parallel branches.
 
 ## Installation
@@ -124,7 +124,7 @@ an instance, checkout keeps the parent-server mount-switching behavior.
 `checkout -b NAME` retains that behavior too.
 
 Linux runs one container per instance, bind-mounting only its own dataset.
-BSD PostgreSQL/MariaDB forks run separate processes with their own data paths,
+BSD PostgreSQL/MariaDB/MySQL forks run separate processes with their own data paths,
 ports, PID files, sockets and logs. Exactly one VM imports a ZFS pool; the same
 disk is never imported into multiple VMs at once. BSD processes share a kernel
 and are not a security boundary. DuckDB's BSD branches remain embedded file
@@ -152,7 +152,9 @@ PostgreSQL exposes `psql`, `pgcli`, Drizzle Studio/drizzle-kit, and the pgroll
 `migrate`, `pgroll` and `setup` commands. MariaDB exposes `mariadb`/`mysql`,
 `mycli`, and Studio/drizzle-kit. MySQL has its own `mysql` client, `mycli`,
 and Studio/drizzle-kit. MySQL binary logging is disabled for local ZFS clones;
-replication is not configured. SQLite exposes `sqlite3`/`tursodb`, `litecli`,
+replication is not configured. On BSD, MySQL uses a separate server process per
+branch and disables the X Plugin to avoid a second shared listening port.
+SQLite exposes `sqlite3`/`tursodb`, `litecli`,
 and Studio/drizzle-kit when running libSQL. DuckDB exposes `duckdb`/`sql`/`cli`
 and Quack authentication tokens; Drizzle does not support that protocol.
 
@@ -197,7 +199,7 @@ Typesense generates an API key when `--password` is omitted; the built-in
 client supplies it as `X-TYPESENSE-API-KEY`. `token` prints the current branch's
 key. Chroma uses its local, unauthenticated API. Both bind forwarded ports to
 loopback. SQL clients, database/user flags and Drizzle commands are not exposed
-for these API services. MySQL, Typesense and Chroma currently use Linux guests
+for these API services. Typesense and Chroma currently use Linux guests
 on both macOS and Linux hosts.
 
 ## Development and CI
@@ -209,6 +211,8 @@ npm run test:e2e                  # all seven live Linux suites, sequentially
 node bin/ci.js e2e duckdb         # one live profile
 SBX_E2E_OS=freebsd node bin/ci.js e2e postgres
 SBX_E2E_OS=netbsd node bin/ci.js e2e mariadb
+SBX_E2E_OS=freebsd node bin/ci.js e2e mysql
+SBX_E2E_OS=netbsd node bin/ci.js e2e mysql
 
 fluentci run test unit
 fluentci run --workflow test      # Ubuntu x86_64, sudo and /dev/kvm
