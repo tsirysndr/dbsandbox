@@ -4,6 +4,8 @@
 
 ### Added
 
+- Nix source builds and development shells, with bsdkrun and Docker, plus multi-platform CI and FlakeHub/Flakestry release publishing.
+
 - Separate database consoles, container shells, and VM terminals in web and TUI bottom panels, with fullscreen and resize controls.
 - Bundled Caskaydia Nerd Mono for browser terminals and logs, plus local task and database UI timestamps.
 

@@ -38,6 +38,26 @@ dbsandbox --help
 
 The formula installs the Docker CLI and bsdkrun dependencies.
 
+Or install with Nix (Linux x86_64/ARM64 or macOS Apple Silicon):
+
+```sh
+nix profile install github:tsirysndr/dbsandbox
+dbsandbox --help
+```
+
+The flake includes [bsdkrun](https://github.com/tsirysndr/bsdkrun) and the Docker CLI.
+On macOS, bsdkrun needs Homebrew's libkrun:
+
+```sh
+brew install libkrun/krun/libkrun
+BSDKRUN_IMPURE=1 nix profile install --impure github:tsirysndr/dbsandbox
+```
+
+For development, run `nix develop` from the checkout. It provides Bun, Node.js,
+PureScript, Spago, formatting tools, and all JavaScript development dependencies.
+On macOS, use `BSDKRUN_IMPURE=1 nix develop --impure` after installing libkrun.
+Build with `nix build` (macOS: `BSDKRUN_IMPURE=1 nix build --impure`).
+
 Or use npm (Node.js 18+):
 
 ```sh
