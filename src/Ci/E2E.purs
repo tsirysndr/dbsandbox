@@ -159,6 +159,9 @@ body c = do
   void $ cliWith c (defaultOptions { timeout = 600000 })
     ([ "start", guest ] <> (if guest == "linux" then [c.profile.defaultTag] else ["--mem", "2048"]) <> [ "--port", show port, "-d" ] <> (if c.profile.hasCredentials then [ "--user", "sbx_e2e", "--password", c.password, "--db", "sbx_e2e" ] else if c.profile.hasToken then ["--password", c.password] else []))
   query c "SELECT 42;" >>= assertEqual "42"
+  when (c.database == "timescale") do
+    void $ query c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+    query c "SELECT count(*) FROM pg_extension WHERE extname='timescaledb';" >>= assertEqual "1"
   let sqlArgs = case c.database of
         name | name == "postgres" || name == "timescale" || name == "yugabytedb" -> [c.profile.clientName, "-tAc", "SELECT 42;"]
         "cockroachdb" -> ["cockroach", "--format=tsv", "--execute=SELECT 42"]
@@ -406,10 +409,10 @@ bodyWorkload c workload = do
 
 tigerWorkload :: Workload.Workload
 tigerWorkload =
-  { seed: [tigerCommand "create_accounts id=1 code=314159 ledger=1;"]
-  , read: tigerCommand "lookup_accounts id=1,id=2;"
-  , write: tigerCommand "create_accounts id=2 code=271828 ledger=1;"
-  , original: "314159", forked: "271828" }
+  { seed: [tigerCommand "create_accounts id=314159 code=10 ledger=1;"]
+  , read: tigerCommand "lookup_accounts id=314159,id=271828;"
+  , write: tigerCommand "create_accounts id=271828 code=10 ledger=1;"
+  , original: "\"314159\"", forked: "\"271828\"" }
 
 tigerCommand :: String -> Array String
-tigerCommand command' = ["exec", "sh", "-c", "printf '%s\\n' '" <> command' <> "' | tigerbeetle repl --cluster=0 --addresses=127.0.0.1:3000"]
+tigerCommand command' = ["repl", "--command=" <> command']

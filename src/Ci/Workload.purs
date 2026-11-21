@@ -9,6 +9,8 @@ import Foreign.Object as O
 type Workload = {seed :: Array (Array String), read :: Array String, write :: Array String, original :: String, forked :: String}
 api :: String -> String -> String -> Array String
 api method path body = ["api", method, path] <> if body == "" then [] else [body]
+schemaJson :: String -> String
+schemaJson schema = J.stringify (J.fromObject (O.singleton "schema" (J.fromString schema)))
 sqlJson :: String -> String
 sqlJson sql = J.stringify (J.fromObject (O.fromFoldable ["sql" /\ J.fromString sql, "pagination" /\ J.fromObject (O.singleton "wait_time_secs" (J.fromNumber 10.0))]))
 find :: String -> Maybe Workload
@@ -38,13 +40,13 @@ find name = map (\w -> {seed: w.seed, read: w.read, write: w.write, original: "o
     , read: ["mongosh", "--quiet", "--eval", "JSON.stringify(db.e2e_values.findOne({_id:'one'}))"]
     , write: ["mongosh", "--quiet", "--eval", "db.e2e_values.updateOne({_id:'one'},{$set:{marker:'forked'}})"]}
   name' | name' == "cassandra" || name' == "scylladb" -> Just
-    {seed: [["cqlsh", "-e", "CREATE KEYSPACE e2e WITH replication={'class':'SimpleStrategy','replication_factor':1}; CREATE TABLE e2e.values(id int PRIMARY KEY,marker text); INSERT INTO e2e.values(id,marker) VALUES(1,'original');"]]
-    , read: ["cqlsh", "-e", "SELECT marker FROM e2e.values WHERE id=1;"]
-    , write: ["cqlsh", "-e", "UPDATE e2e.values SET marker='forked' WHERE id=1;"]}
+    {seed: [["cqlsh", "-e", ("CREATE KEYSPACE e2e WITH replication={'class':'" <> (if name' == "scylladb" then "NetworkTopologyStrategy" else "SimpleStrategy") <> "','replication_factor':'1'}; CREATE TABLE e2e.items(id int PRIMARY KEY,marker text); INSERT INTO e2e.items(id,marker) VALUES(1,'original');")]]
+    , read: ["cqlsh", "-e", "SELECT marker FROM e2e.items WHERE id=1;"]
+    , write: ["cqlsh", "-e", "UPDATE e2e.items SET marker='forked' WHERE id=1;"]}
   "spicedb" -> Just
-    {seed: [api "POST" "/v1/schema/write" "{\"schema\":\"definition user {}\\ndefinition original {relation reader: user}\"}"]
+    {seed: [api "POST" "/v1/schema/write" (schemaJson "definition user {}\ndefinition original {\n relation reader: user\n}\n")]
     , read: api "POST" "/v1/schema/read" "{}"
-    , write: api "POST" "/v1/schema/write" "{\"schema\":\"definition user {}\\ndefinition original {relation reader: user}\\ndefinition forked {relation reader: user}\"}"}
+    , write: api "POST" "/v1/schema/write" (schemaJson "definition user {}\ndefinition original {\n relation reader: user\n}\ndefinition forked {\n relation reader: user\n}\n")}
   "vearch" -> Just
     {seed: [api "POST" "/dbs/original" ""]
     , read: api "GET" "/dbs" ""

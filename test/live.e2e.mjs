@@ -3,7 +3,9 @@ import { test } from 'bun:test';
 import { spawn } from 'node:child_process';
 import { all } from '../output/Sbx.Profiles/index.js';
 
-for (const database of all.map(db=>db.name).filter(name=>!process.env.DBSANDBOX_E2E_DATABASE || name===process.env.DBSANDBOX_E2E_DATABASE)) test(`${database}: parallel servers, credentials, persistence and ZFS isolation`, async () => {
+const selected=process.env.DBSANDBOX_E2E_DATABASE;
+if(selected && !all.some(db=>db.name===selected)) throw Error(`Unknown E2E database: ${selected}`);
+for (const database of all.map(db=>db.name).filter(name=>!selected || name===selected)) test(`${database}: parallel servers, credentials, persistence and ZFS isolation`, async () => {
   // Separate process gives the PureScript runner ownership of SIGINT/SIGTERM
   // and lets its Aff finalizers remove the temporary sandbox on interruption.
   await new Promise((resolve, reject) => {

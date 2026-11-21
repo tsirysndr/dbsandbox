@@ -1,6 +1,6 @@
 import {test,expect} from 'bun:test';
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {all,find} from '../output/Sbx.Profiles/index.js';
@@ -43,4 +43,24 @@ test('generated container entrypoints preserve quotes and literal shell characte
     expect(readFileSync(path,'utf8')).toContain('set -eu');
   }finally{rmSync(dir,{recursive:true,force:true});}
 
+});
+
+
+test('an invalid live-test selector fails instead of silently running zero databases',()=>{
+  const r=spawnSync(process.execPath,['test','./test/live.e2e.mjs'],{encoding:'utf8',timeout:10000,env:{...process.env,DBSANDBOX_E2E_DATABASE:'pinecone',BSDKRUN_NO_AUTO_INSTALL:'1',BSDKRUN_BIN:'/nonexistent/bsdkrun'}});
+  expect(r.status).not.toBe(0);expect(r.stderr).toContain('Unknown E2E database: pinecone');
+});
+
+
+test('TigerBeetle readiness accepts an empty database and rejects connection failures',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'sbx-tiger-ready-'));
+  const p=find('tigerbeetle').value0.profile,argv=p.ready(Linux.value)(p.defaultTag)(p.defaults);
+  try{
+    writeFileSync(join(dir,'timeout'),'#!/bin/sh\nshift\nexec "$@"\n',{mode:0o755});
+    const run=()=>spawnSync(argv[0],argv.slice(1),{encoding:'utf8',env:{...process.env,PATH:dir+':'+process.env.PATH}}).status;
+    for(const [output,code,expected] of [['No accounts were found.',1,0],['connection refused',1,1],['account found',0,0]]){
+      writeFileSync(join(dir,'tigerbeetle'),`#!/bin/sh\nprintf '%s\\n' '${output}' >&2\nexit ${code}\n`,{mode:0o755});
+      expect(run()).toBe(expected);
+    }
+  }finally{rmSync(dir,{recursive:true,force:true});}
 });
