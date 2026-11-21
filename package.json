@@ -1,0 +1,36 @@
+{
+  "name": "dbsandbox",
+  "version": "0.1.0",
+  "description": "Database and search sandboxes with parallel ZFS branches",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dbsandbox": "bin/dbsandbox.js"
+  },
+  "files": [
+    "bin",
+    "output/**/*.js",
+    "output/package.json"
+  ],
+  "scripts": {
+    "build": "spago build",
+    "test": "spago test && npm run test:cli",
+    "prepare": "spago build",
+    "build:bin": "spago build && node bin/ci.js build-binary",
+    "test:cli": "bun test --timeout 120000 test/*.test.mjs",
+    "test:e2e": "bun test --timeout 1800000 ./test/live.e2e.mjs",
+    "build:release": "node bin/ci.js release"
+  },
+  "dependencies": {
+    "@bsdkrun/sdk": "^0.8.0",
+    "drizzle-kit": "^0.31.11",
+    "drizzle-orm": "^0.45.4",
+    "pg": "^8.23.1",
+    "mysql2": "^3.24.6",
+    "@libsql/client": "^0.18.0"
+  },
+  "devDependencies": {
+    "purescript": "^0.15.16",
+    "spago": "^1.0.5"
+  }
+}
