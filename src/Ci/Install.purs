@@ -22,7 +22,7 @@ verifyDriver runtime = do
 
 install :: String -> Aff Unit
 install version = do
-  C.demand "Expected a bsdkrun release such as v0.12.1" (C.matches "^v[0-9]+\\.[0-9]+\\.[0-9]+$" version)
+  C.demand "Expected a bsdkrun release such as v0.12.2" (C.matches "^v[0-9]+\\.[0-9]+\\.[0-9]+$" version)
   host <- liftEffect N.platform
   C.demand "The installer requires Ubuntu x86_64 with KVM" (host.os == "linux" && host.arch == "x64")
   liftEffect (N.exists "/dev/kvm") >>= C.demand "/dev/kvm is required; live tests are never skipped"
