@@ -260,7 +260,7 @@ parseCommand :: Profile -> String -> Effect Command
 parseCommand p version = customExecParser (prefs showHelpOnEmpty) $ info (helper <*> versionOption <*> scopedCommands) $ fold
   [ fullDesc
   , header (p.cli <> " — " <> p.product <> " in a bsdkrun microVM, with branchable data")
-  , progDesc ("One " <> p.product <> " server per sandbox, running in a lightweight VM. Its data directory is a ZFS branch: fork it copy-on-write, switch between branches, throw them away. Drizzle Studio and drizzle-kit are wired to it.")
+  , progDesc ("One " <> p.product <> " server per sandbox, running in a lightweight VM. Its data directory is a ZFS branch: fork it copy-on-write, switch between branches, throw them away. " <> (if p.dialect == "" then "" else " Drizzle Studio and drizzle-kit are wired to it."))
   , footer (defaultsLine p)
   ]
   where
@@ -279,7 +279,7 @@ parseRoot version = customExecParser (prefs showHelpOnEmpty) $ info (helper <*> 
   where
   versionOption = infoOption ("dbsandbox " <> version) (long "version" <> help "Show the version")
   databases = subparser (fold (map database Profiles.all)) <|> subparser
-    (fold (Array.mapMaybe alias ["postgresql", "pg", "mysql", "libsql"]) <> hidden <> commandGroup "Aliases:")
+    (fold (Array.mapMaybe alias ["postgresql", "pg", "libsql"]) <> hidden <> commandGroup "Aliases:")
   alias name = case Profiles.find name of
     Nothing -> Nothing
     Just db -> Just (command name $ info (helper <*> selected db.profile) (progDesc db.profile.product))
