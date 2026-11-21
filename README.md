@@ -102,7 +102,8 @@ dbsandbox tui                    # Open the native terminal dashboard
 
 Choose a database to explore its branch graph, manage servers, copy connection
 URLs, and view or download logs. Use `/` to search and `?` for keyboard shortcuts.
-Dates use local time.
+Dates use local time. Open a database console, container shell, or VM terminal
+from a branch row. Drag the terminal’s top edge to resize, or switch to fullscreen.
 
 Adjust CPU and memory in the VM settings. Resizing the shared Linux VM restarts
 its servers.
@@ -131,6 +132,7 @@ if your font does not support Nerd Font icons.
 | `s` | Start or stop the selected server |
 | `u` / `U` | Open or close its database UI |
 | `y` | Copy its full connection URL |
+| `c` / `t` / `v` | Open database console / container shell / VM terminal |
 | `l` / `L` | View database logs / VM logs |
 | `o` | View captured operation output |
 | `n` | Start a database: `database [guest] [version] [CPU] [MiB]` |
@@ -139,6 +141,8 @@ if your font does not support Nerd Font icons.
 | `r` | Refresh |
 | `?` | Show keyboard shortcuts |
 | `q` / `Ctrl-C` | Quit and close owned UI sessions |
+
+In a terminal panel, Ctrl-F toggles fullscreen and Esc closes it.
 
 In the log viewer, `/` filters, `f` toggles follow, `t` toggles timestamps,
 and `d` exports logs as text.

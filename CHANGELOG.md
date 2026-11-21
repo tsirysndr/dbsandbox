@@ -4,6 +4,9 @@
 
 ### Added
 
+- Separate database consoles, container shells, and VM terminals in web and TUI bottom panels, with fullscreen and resize controls.
+- Bundled Caskaydia Nerd Mono for browser terminals and logs, plus local task and database UI timestamps.
+
 - npm launcher package with a verified GitHub release installer and an `@bsdkrun/cli` dependency.
 
 - Global sandbox inventory, database catalog, diagnostics, engine controls, stop-all, and shell completions.
@@ -25,6 +28,8 @@
 - Add the README banner and document installation, dashboards, branches, logs, and completions.
 
 ### Fixed
+
+- Keep modal scrolling inside the modal and sort database selectors alphabetically.
 
 - Check host and VM ports when allocating Linux branch servers, avoiding ephemeral-port collisions.
 
