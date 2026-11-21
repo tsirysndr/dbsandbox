@@ -1,7 +1,10 @@
 @import 'tailwindcss' source(none);
+@import '@wterm/svelte/css';
 @source './App.svelte';
 @source './Skeleton.svelte';
 @source './BranchGraph.svelte';
+@source './TerminalPanel.svelte';
+@source './TerminalPane.svelte';
 @theme {
   --color-canvas: #09090b;
   --color-panel: #111113;
@@ -67,4 +70,36 @@
   .skeleton {
     animation: none;
   }
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+html:has(dialog[open]),
+body:has(dialog[open]),
+html:has([data-terminal-fullscreen]),
+body:has([data-terminal-fullscreen]) {
+  overflow: hidden;
+}
+dialog,
+dialog pre,
+.wterm,
+.wterm-viewport {
+  overscroll-behavior: contain;
+}
+.terminal-font {
+  font-family: 'Caskaydia Nerd Mono', monospace;
+}
+.web-terminal .wterm {
+  --term-font-family: 'Caskaydia Nerd Mono', monospace;
+  --term-font-size: 14px;
+  --term-line-height: 1.35;
+  --term-bg: #09090b;
+  --term-fg: #d4d4d8;
+  --term-cursor: #8129ff;
+  --term-color-5: #8129ff;
+  --term-color-6: #00ffc3;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
 }

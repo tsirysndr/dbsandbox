@@ -11,3 +11,5 @@ export const timestamp = value => {
 };
 // Keep a precise instant internally; localization happens at presentation time.
 export const now = () => dayjs().toISOString();
+
+export const epochNow = () => Date.now() / 1000;

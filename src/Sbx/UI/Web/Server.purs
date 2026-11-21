@@ -30,6 +30,9 @@ import Sbx.Management.Inventory as Inventory
 import Sbx.Platform.Native as N
 import Sbx.State.Store as Store
 import Sbx.Management.System as System
+import Sbx.UI.Console.Plan as Terminal
+import Sbx.UI.Web.Terminal.Native as Terminals
+import Sbx.UI.Time as Time
 
 type Task = { id :: String, fiber :: Fiber Unit }
 
@@ -49,7 +52,8 @@ jobJson j = do
     else if j.kind == "duckdb" then Http.healthy ("http://127.0.0.1:" <> show j.port) O.empty
     else Browser.listening "127.0.0.1" j.port
   pure $ J.fromObject $ O.fromFoldable
-    [ "id" /\ J.fromString j.id
+    [ "createdAt" /\ J.fromNumber j.createdAt
+    , "id" /\ J.fromString j.id
     , "action" /\ J.fromString j.action
     , "database" /\ J.fromString j.database
     , "branch" /\ J.fromString j.branch
@@ -68,6 +72,7 @@ run options = Browser.session do
       unless free $ throwError (error "Dashboard port is in use; choose another with --port")
       pure value
   token <- liftEffect N.randomPassword
+  terminals <- liftEffect Terminals.create
   journal <- liftEffect Session.create
   jobs <- liftEffect (Ref.new ([] :: Array Job))
   tasks <- liftEffect (Ref.new ([] :: Array Task))
@@ -78,7 +83,7 @@ run options = Browser.session do
       , "Cache-Control" /\ "no-store"
       , "X-Content-Type-Options" /\ "nosniff"
       , "X-Frame-Options" /\ "DENY"
-      , "Content-Security-Policy" /\ ("default-src 'self'; script-src 'nonce-" <> token <> "'; style-src 'nonce-" <> token <> "'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+      , "Content-Security-Policy" /\ ("default-src 'self'; script-src 'nonce-" <> token <> "' 'wasm-unsafe-eval'; style-src 'nonce-" <> token <> "'; style-src-attr 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:" <> show port <> " ws://localhost:" <> show port <> "; font-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
       ]
   let reply status value = { status, headers: headers "application/json", body: J.stringify value }
   let problem status text = pure $ reply status (J.fromObject (O.singleton "error" (J.fromString text)))
@@ -87,7 +92,8 @@ run options = Browser.session do
   let
     launch action next = do
       id <- liftEffect N.randomPassword <#> S.take 16
-      liftEffect $ Ref.modify_ (_ <> [ { id, action: action.action, database: action.database, branch: action.branch, status: "RUNNING", url: next.url, port: next.port, kind: next.kind } ]) jobs
+      createdAt <- liftEffect Time.epochNow
+      liftEffect $ Ref.modify_ (_ <> [ { id, action: action.action, database: action.database, branch: action.branch, status: "RUNNING", url: next.url, port: next.port, kind: next.kind, createdAt } ]) jobs
       fiber <- forkAff $ finally (finish id next.kind) do
         result <- attempt (Session.runAction journal id action next.port)
         case result of
@@ -115,6 +121,14 @@ run options = Browser.session do
           case result of
             Left text -> problem 400 text
             Right value -> pure $ reply 200 (J.fromObject (O.fromFoldable [ "text" /\ J.fromString value.text, "source" /\ J.fromString value.source, "label" /\ J.fromString value.label, "truncated" /\ J.fromBoolean value.truncated ]))
+      else if request.method == "POST" && request.path == "/api/terminal" then do
+        case Terminal.decode request.body of
+          Left text -> problem 400 text
+          Right target -> Terminal.prepare target >>= case _ of
+            Left text -> problem 400 text
+            Right plan -> do
+              session <- liftEffect (Terminals.reserve terminals plan)
+              pure $ reply 201 (J.fromObject (O.fromFoldable [ "id" /\ J.fromString session.id, "ticket" /\ J.fromString session.ticket, "label" /\ J.fromString session.label ]))
       else if request.method == "GET" && request.path == "/api/connection" then do
         result <- Control.connection request.database request.branch
         case result of
@@ -157,8 +171,10 @@ run options = Browser.session do
                   Right next -> launch action next
       else problem 404 "Not found"
   server <- HTTP.listen port handler
+  liftEffect (Terminals.attach terminals port server)
   let
     cleanup = do
+      Terminals.close terminals
       active <- liftEffect (Ref.read tasks)
       for_ active \task -> killFiber (error "Dashboard closed") task.fiber
       HTTP.close server

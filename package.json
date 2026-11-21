@@ -38,11 +38,14 @@
     "drizzle-kit": "^0.31.11",
     "drizzle-orm": "^0.45.4",
     "mysql2": "^3.24.6",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@lucide/svelte": "^1.77.0",
     "@tailwindcss/postcss": "^4.3.5",
+    "@wterm/dom": "^0.6.0",
+    "@wterm/svelte": "^0.6.0",
     "esbuild": "^0.28.2",
     "postcss": "^8.5.33",
     "prettier": "^3.10.1",

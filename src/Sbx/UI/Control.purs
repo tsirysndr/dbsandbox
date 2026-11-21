@@ -28,7 +28,7 @@ import Sbx.Database.Profiles as Profiles
 import Sbx.Management.System as System
 
 type Action = { action :: String, database :: String, branch :: String, name :: String, guest :: String, version :: String, id :: String, cpus :: Maybe Int, mem :: Maybe Int, uiPort :: Maybe Int }
-type Job = { id :: String, action :: String, database :: String, branch :: String, status :: String, url :: String, port :: Int, kind :: String }
+type Job = { id :: String, action :: String, database :: String, branch :: String, status :: String, url :: String, port :: Int, kind :: String, createdAt :: Number }
 type Plan = { operation :: Aff Int, url :: String, port :: Int, kind :: String }
 
 decodeAction :: String -> Either String Action

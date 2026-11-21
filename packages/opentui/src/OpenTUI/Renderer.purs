@@ -78,3 +78,10 @@ foreign import onKey :: Renderer -> (Key -> Effect Unit) -> Effect (Effect Unit)
 foreign import onResize :: Renderer -> Effect Unit -> Effect (Effect Unit)
 
 foreign import clipboard :: Renderer -> String -> Effect Unit
+
+type TerminalCommand = { program :: String, args :: Array String, label :: String }
+
+foreign import terminalImpl :: Renderer -> TerminalCommand -> Effect (Promise Unit)
+
+terminal :: Renderer -> TerminalCommand -> Aff Unit
+terminal renderer command = toAffE (terminalImpl renderer command)

@@ -25,6 +25,9 @@ import Sbx.Platform.Native as N
 import Sbx.Management.System as System
 import Sbx.Management.Logs as Logs
 import Sbx.UI.Terminal.Native as Text
+import Sbx.UI.Console.Plan as ConsolePlan
+import Sbx.UI.Console.Native as ConsoleNative
+import Sbx.UI.Time as Time
 
 type Task = { id :: String, fiber :: Fiber Unit }
 
@@ -77,7 +80,8 @@ run = do
             Right (Left text) -> modify (\m -> m { notice = text })
             Right (Right next) -> do
               id <- liftEffect N.randomPassword <#> S.take 16
-              modify (\m -> m { notice = action.action <> " started", mode = Normal, jobs = m.jobs <> [ { id, action: action.action, database: action.database, branch: action.branch, status: "RUNNING", url: next.url, port: next.port, kind: next.kind } ] })
+              createdAt <- liftEffect Time.epochNow
+              modify (\m -> m { notice = action.action <> " started", mode = Normal, jobs = m.jobs <> [ { id, action: action.action, database: action.database, branch: action.branch, status: "RUNNING", url: next.url, port: next.port, kind: next.kind, createdAt } ] })
               fiber <- forkAff $ finally
                 ( do
                     modify (\m -> m { jobs = map (\j -> if j.id == id && j.status == "RUNNING" then j { status = if next.kind == "operation" then "FAILED" else "CLOSED" } else j) m.jobs })
@@ -170,6 +174,17 @@ run = do
               )
           _ -> pure unit
 
+    let
+      openConsole row kind = do
+        result <- attempt (ConsolePlan.prepare { database: row.database, branch: row.branch, kind })
+        case result of
+          Left err -> modify (_ { notice = message err })
+          Right (Left reason) -> modify (_ { notice = reason })
+          Right (Right plan) -> do
+            command <- liftEffect (ConsoleNative.resolve plan)
+            T.terminal screen command
+            refresh
+
     let validated = perform
     let
       handle key = do
@@ -259,6 +274,9 @@ run = do
             _, _ -> case current m of
               Nothing -> pure unit
               Just row -> case text, key.name of
+                "c", _ -> openConsole row "console"
+                "t", _ -> openConsole row "container"
+                "v", _ -> openConsole row "vm"
                 "l", _ -> openLogs row.database row.branch "server"
                 "d", _ -> if row.deletable then modify (_ { mode = Confirm (rowAction row "delete") ("Delete " <> row.database <> "/" <> row.branch <> " and all its data? This cannot be undone.") }) else modify (_ { notice = "Cannot delete the selected branch, main, or the parent server dataset" })
                 "b", _ -> modify (_ { mode = Input Fork, input = "" })

@@ -28,14 +28,14 @@ import Foreign.Object as O
 import Sbx.Runtime.BsdServer as BSD
 import Sbx.Cli (Command(..))
 import Sbx.Branch.Identity as I
-import Sbx.Database.Profile (Profile, Os(..), parseOs)
+import Sbx.Database.Profile (Profile, Os(..), ClientCmd(..), parseOs)
 import Sbx.Database.Profiles as Profiles
 import Sbx.State.Types (State)
 import Sbx.State as State
 import Sbx.State.Store as Store
 
 type Entry = { database :: String, profile :: Profile, tool :: String, state :: State, active :: Boolean, kind :: String, parent :: Nullable String, createdAt :: Nullable Number }
-type ServerRow = { database :: String, tool :: String, branch :: String, guest :: String, version :: String, status :: String, running :: Boolean, active :: Boolean, port :: Int, url :: String, ui :: String, kind :: String, deletable :: Boolean, parent :: Nullable String, createdAt :: Nullable Number, created :: String, graph :: Graph.Position }
+type ServerRow = { database :: String, tool :: String, branch :: String, guest :: String, version :: String, status :: String, running :: Boolean, active :: Boolean, port :: Int, url :: String, ui :: String, kind :: String, deletable :: Boolean, parent :: Nullable String, createdAt :: Nullable Number, created :: String, graph :: Graph.Position, console :: String, containerTerminal :: Boolean }
 
 canDelete :: Entry -> Boolean
 canDelete e = not e.active && e.state.branch /= "main" && e.tool /= e.profile.tool
@@ -140,6 +140,12 @@ snapshot = do
           , createdAt: entry.createdAt
           , created: Metadata.dateLabel entry.createdAt
           , graph: Graph.empty
+          , console:
+              if entry.kind == "data" then ""
+              else case p.client of
+                Http -> ""
+                _ -> if entry.database == "postgres" then "pgcli" else if A.elem entry.database [ "mariadb", "mysql" ] then "mycli" else if entry.database == "sqlite" then "litecli" else p.clientName
+          , containerTerminal: entry.kind /= "data" && os == Linux
           , guest: entry.state.os
           , version: entry.state.version
           , status: state
@@ -179,6 +185,8 @@ rowJson r = J.fromObject $ O.fromFoldable
   [ "database" /\ J.fromString r.database
   , "tool" /\ J.fromString r.tool
   , "branch" /\ J.fromString r.branch
+  , "console" /\ J.fromString r.console
+  , "containerTerminal" /\ J.fromBoolean r.containerTerminal
   , "parent" /\ maybeJson J.fromString (toMaybe r.parent)
   , "createdAt" /\ maybeJson J.fromNumber (toMaybe r.createdAt)
   , "created" /\ J.fromString r.created

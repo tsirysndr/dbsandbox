@@ -1,7 +1,9 @@
 <script>
   import { onMount, tick } from 'svelte';
+  import { created as localDate } from '../../output/Sbx.UI.Time/foreign.js';
   import Skeleton from './Skeleton.svelte';
   import BranchGraph from './BranchGraph.svelte';
+  import TerminalPanel from './TerminalPanel.svelte';
   import { branchGraph } from './graph.js';
   import {
     Database,
@@ -34,6 +36,8 @@
     Download,
     ArrowUp,
     Trash2,
+    TerminalSquare,
+    Container,
   } from '@lucide/svelte';
   import { filterBranches } from './search.js';
   import { paginate } from './pagination.js';
@@ -48,6 +52,9 @@
   });
   let page = $state(1),
     pageSize = $state(10);
+  let terminalSessions = $state([]),
+    activeTerminal = $state(''),
+    terminalHeight = $state(0);
   let scrollY = $state(0);
   let copied = $state('');
   let copyTimer;
@@ -154,9 +161,9 @@
     guest = $state('linux'),
     version = $state('');
   const available = $derived(
-    snapshot.catalog.filter(
-      (db) => !snapshot.rows.some((r) => r.database === db.name),
-    ),
+    snapshot.catalog
+      .filter((db) => !snapshot.rows.some((r) => r.database === db.name))
+      .toSorted((a, b) => a.product.localeCompare(b.product)),
   );
   const selected = $derived(available.find((db) => db.name === database));
   let graphView = $state(true);
@@ -237,6 +244,7 @@
   }
 
   async function handleShortcut(event) {
+    if (event.target?.closest?.('[data-web-terminal]')) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (logDialog?.open) {
       if (
@@ -518,6 +526,38 @@
   const send = (row, actionName) =>
     action({ action: actionName, database: row.database, branch: row.branch });
 
+  async function openTerminal(row, kind, previous = null) {
+    const key = row.database + ':' + row.branch + ':' + kind;
+    const existing = terminalSessions.find((session) => session.key === key);
+    if (existing && !previous) {
+      activeTerminal = existing.id;
+      return;
+    }
+    try {
+      const session = await request('/api/terminal', {
+        database: row.database,
+        branch: row.branch,
+        kind,
+      });
+      const next = { ...session, key, row, kind };
+      terminalSessions = previous
+        ? terminalSessions.map((item) =>
+            item.id === previous.id ? next : item,
+          )
+        : [...terminalSessions, next];
+      activeTerminal = next.id;
+    } catch (e) {
+      error = e.message;
+    }
+  }
+
+  function closeTerminal(id) {
+    terminalSessions = terminalSessions.filter((session) => session.id !== id);
+    if (activeTerminal === id)
+      activeTerminal = terminalSessions.at(-1)?.id || '';
+    if (!terminalSessions.length) terminalHeight = 0;
+  }
+
   function deleteBranch(row) {
     if (!row.deletable || busy) return;
     if (
@@ -553,6 +593,9 @@
 
 <main
   aria-busy={loading}
+  style:padding-bottom={terminalSessions.length
+    ? terminalHeight + 32 + 'px'
+    : undefined}
   class="mx-auto max-w-[1380px] px-4 py-8 md:px-8 md:py-12"
 >
   {#if loading}<p class="sr-only" role="status">Loading dashboard…</p>{/if}
@@ -923,6 +966,40 @@
                   </div>
                 </td><td class="px-5 py-4">
                   <div class="flex flex-wrap gap-1.5">
+                    {#if row.console}<button
+                        class="button-small"
+                        disabled={!row.running}
+                        aria-label={'Open ' +
+                          row.console +
+                          ' console for ' +
+                          row.database +
+                          '/' +
+                          row.branch}
+                        onclick={() => openTerminal(row, 'console')}
+                      >
+                        <TerminalSquare size={12} />{row.console}
+                      </button>{/if}
+                    {#if row.containerTerminal}<button
+                        class="button-small"
+                        disabled={!row.running}
+                        aria-label={'Open container terminal for ' +
+                          row.database +
+                          '/' +
+                          row.branch}
+                        onclick={() => openTerminal(row, 'container')}
+                      >
+                        <Container size={12} />Container
+                      </button>{/if}
+                    <button
+                      class="button-small"
+                      aria-label={'Open VM terminal for ' +
+                        row.database +
+                        '/' +
+                        row.branch}
+                      onclick={() => openTerminal(row, 'vm')}
+                    >
+                      <Server size={12} />VM
+                    </button>
                     <button
                       class="button-small"
                       disabled={busy}
@@ -1153,7 +1230,16 @@
             <span>
               {job.action}
               {job.database}{job.branch ? '/' + job.branch : ''}
-            </span><span class="text-zinc-600">·</span><span
+            </span>
+            <time
+              class="text-[10px] font-normal text-zinc-500"
+              datetime={job.createdAt
+                ? new Date(job.createdAt * 1000).toISOString()
+                : undefined}
+            >
+              {localDate(job.createdAt)}
+            </time>
+            <span class="text-zinc-600">·</span><span
               class:text-running={job.status === 'RUNNING'}
               class:text-amber-300={job.status === 'FAILED'}
               class="inline-flex items-center gap-1.5 text-zinc-500"
@@ -1324,7 +1410,7 @@
   <pre
     bind:this={logElement}
     aria-label="Log output"
-    class="min-h-0 flex-1 overflow-auto bg-[#070708] p-5 font-mono text-xs leading-6 whitespace-pre text-zinc-300">{#if presentedLogs.length}{#each presentedLogs as line, i}{#if i > 0}{'\n'}{/if}{#if logTimestamps}<span
+    class="terminal-font min-h-0 flex-1 overflow-auto bg-[#070708] p-5 text-xs leading-6 whitespace-pre text-zinc-300">{#if presentedLogs.length}{#each presentedLogs as line, i}{#if i > 0}{'\n'}{/if}{#if logTimestamps}<span
             class="text-zinc-500"
             data-log-date
             >{#each highlightMatches(line.date, logFilter) as span}{#if span.match}<mark
@@ -1407,3 +1493,12 @@
     <ArrowUp size={19} />
   </button>
 {/if}
+
+{#if terminalSessions.length}<TerminalPanel
+    sessions={terminalSessions}
+    active={activeTerminal}
+    onactivate={(id) => (activeTerminal = id)}
+    onclose={closeTerminal}
+    onreconnect={(session) => openTerminal(session.row, session.kind, session)}
+    onheight={(height) => (terminalHeight = height)}
+  />{/if}

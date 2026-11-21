@@ -44,8 +44,16 @@ const css = await postcss([
 ]).process(await readFile(resolve(root, 'ui/src/app.css'), 'utf8'), {
   from: resolve(root, 'ui/src/app.css'),
 });
+const font = await readFile(
+  resolve(root, 'ui/assets/fonts/caskaydia-nerd-mono.woff2'),
+);
+const fontLicense = await readFile(
+  resolve(root, 'ui/assets/fonts/OFL.txt'),
+  'utf8',
+);
+const fontCss = `/* ${fontLicense} */@font-face{font-family:'Caskaydia Nerd Mono';font-style:normal;font-weight:100 900;font-display:swap;src:url(data:font/woff2;base64,${font.toString('base64')}) format('woff2')}`;
 const script = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="dbsandbox-token" content="__TOKEN__"><title>dbsandbox</title><style nonce="__TOKEN__">${css.css}</style></head><body><div id="app"></div><script nonce="__TOKEN__">${script}</script></body></html>`;
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="dbsandbox-token" content="__TOKEN__"><title>dbsandbox</title><style nonce="__TOKEN__">${fontCss}${css.css}</style></head><body><div id="app"></div><script nonce="__TOKEN__">${script}</script></body></html>`;
 await mkdir(resolve(root, 'ui/generated'), { recursive: true });
 await writeFile(
   resolve(root, 'ui/generated/page.js'),

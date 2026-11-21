@@ -13,10 +13,13 @@
         "drizzle-orm": "^0.45.4",
         "mysql2": "^3.24.6",
         "pg": "^8.23.1",
+        "ws": "^8.23.0",
       },
       "devDependencies": {
         "@lucide/svelte": "^1.77.0",
         "@tailwindcss/postcss": "^4.3.5",
+        "@wterm/dom": "^0.6.0",
+        "@wterm/svelte": "^0.6.0",
         "esbuild": "^0.28.2",
         "postcss": "^8.5.33",
         "prettier": "^3.10.1",
@@ -206,6 +209,12 @@
     "@types/node": ["@types/node@26.6.6", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog=="],
 
     "@types/ws": ["@types/ws@8.18.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w=="],
+
+    "@wterm/core": ["@wterm/core@0.6.0", "", {}, "sha512-5sKuBbMAILn1PyC5AJvTfVo+80nEAoPY+YyN0SYg3KkCV/DyUqdDzFIZQYuJN1ijTWZ/XQLh7hsmZRQtb59IYw=="],
+
+    "@wterm/dom": ["@wterm/dom@0.6.0", "", { "dependencies": { "@wterm/core": "0.6.0" } }, "sha512-c638pHIx3nN0fXP8B/nERAEjBc3GsSbJmW1TN+/WaDLOU97Y/IYw35bargP6e8y8Paq0sF1AnWB9HgKIZR4QBw=="],
+
+    "@wterm/svelte": ["@wterm/svelte@0.6.0", "", { "peerDependencies": { "@wterm/dom": "0.6.0", "svelte": "^5.57.0" } }, "sha512-HOlbdpNBN/Qxl2RtxJ98pkVgKkbVTZJWF3RohWu+BQh0Rh4JHJk961KJWgdPGsK7/n7RkzAiFReKRJCdRPx27Q=="],
 
     "acorn": ["acorn@8.19.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw=="],
 

@@ -5,7 +5,7 @@ module Sbx.UI.Terminal.View (tree) where
 import Prelude
 import Data.Array as A
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Nullable (toMaybe)
+import Data.Nullable (toMaybe, toNullable)
 import Data.String as S
 import OpenTUI.Renderer as UI
 import Sbx.UI.Terminal.Model (Model, Mode(..), Prompt(..), current, filtered, branches, databases, selectedDatabase)
@@ -93,7 +93,7 @@ tree dimensions m =
           )
       , label muted "y copy URL  ·  u open database UI  ·  Enter select branch"
       ]
-    tasks = panel "ACTIVITY" 6 ([ label accent m.notice ] <> map (\j -> label (if j.status == "RUNNING" then "#00ffc3" else muted) (j.action <> " " <> j.database <> "  " <> j.status)) (A.take 1 (A.reverse m.jobs)))
+    tasks = panel "ACTIVITY" 6 ([ label accent m.notice ] <> map (\j -> label (if j.status == "RUNNING" then "#00ffc3" else muted) (Metadata.dateLabel (toNullable (Just j.createdAt)) <> "  " <> j.action <> " " <> j.database <> "  " <> j.status)) (A.take 1 (A.reverse m.jobs)))
     body = UI.box (UI.boxOptions { grow = 1, gap = 1, paddingX = 1, width = "" })
       ([ UI.box (UI.boxOptions { height = 3, paddingX = 1 }) [ UI.text (UI.textOptions { content = "dbsandbox_", foreground = accent, bold = true }), label muted "Independent databases. Parallel branches." ] ] <> (if dimensions.rows < 24 then [] else [ metrics ]) <> [ table ] <> (if dimensions.rows < 30 then [] else [ connection ]) <> (if dimensions.rows < 40 then [] else [ tasks ]))
     main = UI.box (UI.boxOptions { direction = "row", gap = 1, grow = 1, paddingX = 1, paddingY = 1, width = "100%" }) ((if width < 115 then [] else [ sidebar ]) <> [ body ])
@@ -142,8 +142,8 @@ tree dimensions m =
               )
           ]
       Help ->
-        [ modal "KEYBOARD SHORTCUTS" (min 21 (dimensions.rows - 4))
-            (map (label "#d4d4d8") [ "Tab              Choose database", "g / [ / ]        Graph toggle / pan lanes", "j/k or ↑↓        Navigate servers", "/ or Ctrl-P      Fuzzy branch search", "Enter            Select branch", "b                Fork branch", "d                Delete inactive branch", "s                Start / stop selected server", "u / U            Open / close database UI", "y                Copy connection URL", "l / L            Database / VM logs", "o                Captured operation output", "n                Start a database", "e                Override VM CPU / memory", "S                Stop all servers", "r                Refresh", "q / Ctrl-C       Quit; owned UI sessions close", "Esc / ?          Close help" ])
+        [ modal "KEYBOARD SHORTCUTS" (min 24 (dimensions.rows - 4))
+            (map (label "#d4d4d8") [ "Tab              Choose database", "g / [ / ]        Graph toggle / pan lanes", "j/k or ↑↓        Navigate servers", "/ or Ctrl-P      Fuzzy branch search", "Enter            Select branch", "b                Fork branch", "d                Delete inactive branch", "s                Start / stop selected server", "u / U            Open / close database UI", "y                Copy connection URL", "c / t / v        Console / container / VM terminal", "l / L            Database / VM logs", "o                Captured operation output", "n                Start a database", "e                Override VM CPU / memory", "S                Stop all servers", "r                Refresh", "q / Ctrl-C       Quit; owned UI sessions close", "Esc / ?          Close help" ])
         ]
       Confirm _ prompt -> [ modal "CONFIRM ACTION" 8 [ label "#e4e4e7" prompt, label accent "y confirm     n / Esc cancel" ] ]
       Input prompt ->

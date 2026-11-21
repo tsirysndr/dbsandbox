@@ -70,6 +70,10 @@ test('dashboard serves real HTTP, protects mutations, stops fixture servers and 
   expect((await fetch(base+'/api/action',{method:'POST',headers:{...headers,Origin:'https://evil.example'},body:'{"action":"stop-all"}'})).status).toBe(403);
   const snapshot=await(await fetch(base+'/api/snapshot',{headers})).json();expect(snapshot.rows).toHaveLength(2);expect(JSON.stringify(snapshot)).not.toContain('DO-NOT-LEAK');
   expect(await(await fetch(base+'/api/search?q=feat',{headers})).json()).toEqual([f.child]);
+  for(const [kind,label] of [['console','pgcli'],['container','Container'],['vm','VM']]){const response=await fetch(base+'/api/terminal',{method:'POST',headers,body:JSON.stringify({database:'postgres',branch:'feature',kind})});expect(response.status).toBe(201);const session=await response.json();expect(session.label).toContain(label);expect(session.ticket).toHaveLength(64);}
+  expect((await fetch(base+'/api/terminal',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status).toBe(403);
+  expect((await fetch(base+'/api/terminal',{method:'POST',headers,body:JSON.stringify({database:'postgres',branch:'feature',kind:'host'})})).status).toBe(400);
+
   expect((await fetch(base+'/api/search?q=feat')).status).toBe(403);
   expect((await fetch(base+'/api/connection?database=postgres&branch=feature')).status).toBe(403);
   const connection=await(await fetch(base+'/api/connection?database=postgres&branch=feature',{headers})).json();expect(connection.url).toContain('DO-NOT-LEAK@127.0.0.1:5433');
@@ -81,6 +85,7 @@ test('dashboard serves real HTTP, protects mutations, stops fixture servers and 
   const wrong=await fetch(base+'/api/action',{method:'POST',headers,body:'{"action":"branch","database":"postgres","name":"../evil"}'});expect(wrong.status).toBe(400);
   const accepted=await fetch(base+'/api/action',{method:'POST',headers,body:'{"action":"stop-all"}'});expect(accepted.status).toBe(202);const{id}=await accepted.json();
   await until(async()=>{const s=await(await fetch(base+'/api/snapshot',{headers})).json();return s.jobs.find(j=>j.id===id)?.status==='DONE';});
+  const taskSnapshot=await(await fetch(base+'/api/snapshot',{headers})).json();const completedTask=taskSnapshot.jobs.find(j=>j.id===id);expect(typeof completedTask.createdAt).toBe('number');expect(completedTask.createdAt).toBeGreaterThan(Date.now()/1000-30);
   expect(f.calls().filter(c=>c[0]==='docker'&&c[1]==='stop').map(c=>c[2])).toEqual([f.child,'postgres-sbx']);
   const operation=await(await fetch(base+`/api/logs?source=operation&id=${id}`,{headers})).json();expect(operation.text).toContain('Stopping container');expect(operation.text).not.toContain('DO-NOT-LEAK');
   const resize=await fetch(base+'/api/action',{method:'POST',headers,body:'{"action":"configure-engine","cpus":4,"mem":4096}'});expect(resize.status).toBe(202);const resizeId=(await resize.json()).id;
