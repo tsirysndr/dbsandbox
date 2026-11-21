@@ -22,12 +22,17 @@ concurrency:
 
 jobs:
   test:
-    name: Unit and live KVM / seven databases / ZFS tests
+    name: ${{ matrix.database }} / unit and live KVM tests
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [postgres, mariadb, mysql, duckdb, sqlite, typesense, chroma, databend, tigerbeetle, yugabytedb, vearch, timescale, tidb, spicedb, surrealdb, scylladb, qdrant, mongodb, cassandra, clickhouse, arangodb, cockroachdb]
     env:
       BSDKRUN_NO_AUTO_INSTALL: '1'
       NO_COLOR: '1'
+      DBSANDBOX_E2E_DATABASE: ${{ matrix.database }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +44,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          name: test-logs-${{ matrix.database }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: .fluentci/test-logs/
           include-hidden-files: true
           if-no-files-found: warn

@@ -1,6 +1,6 @@
 # dbsandbox
 
-PostgreSQL, MariaDB, MySQL, DuckDB, SQLite, Typesense and Chroma in one PureScript CLI, powered by
+Database, search and authorization sandboxes in one PureScript CLI, powered by
 [bsdkrun](https://github.com/tsirysndr/bsdkrun). Fork database data with ZFS
 copy-on-write and run the forks as independent servers at the same time.
 
@@ -22,10 +22,25 @@ dbsandbox chroma start
 | --- | --- | --- | --- | --- |
 | PostgreSQL | `postgres` (`postgresql`, `pg`) | `postgres:18` | 5432 | Official server packages |
 | MariaDB | `mariadb` | `mariadb:12` | 3306 | Official server packages |
-| MySQL | `mysql` | `mysql:8.4` | 3306 | FreeBSD 8.4 / NetBSD 8.0 packages |
+| MySQL | `mysql` | `mysql:8.4` | 3306 | FreeBSD 8.4 / NetBSD 8.0 pkgsrc; binary availability varies |
 | Typesense | `typesense` | `typesense/typesense:30.2` | 8108 | Linux only |
 | Chroma | `chroma` | `chromadb/chroma:1.5.3` | 8000 | Linux only |
 | DuckDB | `duckdb` | `duckdb/duckdb:2.0.0` | 9494, Quack | Embedded file access; DuckDB >= 2 required |
+| Databend | `databend` | `datafuselabs/databend:latest` | 8000, HTTP SQL | Linux only |
+| TigerBeetle | `tigerbeetle` | `ghcr.io/tigerbeetle/tigerbeetle:latest` | 3000 | Linux only |
+| YugabyteDB | `yugabytedb` | `yugabytedb/yugabyte:2026.1.3.0-b100` | 5433, YSQL | Linux only |
+| Vearch | `vearch` | `vearch/vearch:latest` | 9001 | Linux only |
+| TimescaleDB | `timescale` | `timescale/timescaledb:latest-pg18` | 5432 | Linux only |
+| TiDB | `tidb` | `pingcap/tidb:latest` | 4000, MySQL | Linux only |
+| SpiceDB | `spicedb` | `authzed/spicedb:latest` + PostgreSQL 17 | 8443, HTTP gateway | Linux only |
+| SurrealDB | `surrealdb` | `surrealdb/surrealdb:latest` | 8000 | Linux only |
+| ScyllaDB | `scylladb` | `scylladb/scylla:latest` | 9042, CQL | Linux only |
+| Qdrant | `qdrant` | `qdrant/qdrant:latest` | 6333, HTTP | Linux only |
+| MongoDB | `mongodb` | `mongo:8` | 27017 | Linux only |
+| Cassandra | `cassandra` | `cassandra:5` | 9042, CQL | Linux only |
+| ClickHouse | `clickhouse` | `clickhouse/clickhouse-server:latest` | 8123, HTTP | Linux only |
+| ArangoDB | `arangodb` | `arangodb:latest` | 8529 | Linux only |
+| CockroachDB | `cockroachdb` | `cockroachdb/cockroach:latest` | 26257, PostgreSQL | Linux only |
 | SQLite | `sqlite` (`libsql`) | `ghcr.io/tursodatabase/libsql-server:latest` | 8080 | Linux only |
 
 Each database has its own state, branches and selection. All Linux containers
@@ -202,12 +217,65 @@ loopback. SQL clients, database/user flags and Drizzle commands are not exposed
 for these API services. Typesense and Chroma currently use Linux guests
 on both macOS and Linux hosts.
 
+## Additional Linux backends
+
+All services in the extended catalog use Linux guests. Aliases include
+`timescaledb`, `mongo`, `cockroach`, `scylla` and `yugabyte`.
+
+```sh
+dbsandbox qdrant start --password my-api-key
+dbsandbox qdrant api GET /collections
+dbsandbox mongodb start --password local-secret
+dbsandbox mongodb mongosh --eval 'db.runCommand({ping:1})'
+dbsandbox cassandra cqlsh -e 'SELECT release_version FROM system.local'
+dbsandbox clickhouse api POST / 'SELECT 42'
+dbsandbox surrealdb api POST /sql 'INFO FOR ROOT;'
+dbsandbox timescale start --port 15432
+dbsandbox cockroachdb start
+dbsandbox tidb start
+dbsandbox tigerbeetle start
+dbsandbox tigerbeetle repl
+dbsandbox spicedb start --password my-preshared-key
+```
+
+`branch NAME` and `--branch NAME` work across the catalog. When parent ports
+conflict, select an unused port with `start --port PORT`; fork ports are chosen
+automatically. Only each service's primary client endpoint is published.
+SpiceDB exposes the authenticated HTTP gateway; its PostgreSQL datastore and
+gRPC listener stay inside the container. TigerBeetle uses a single development
+replica with cluster ID 0. TiDB uses persistent UniStore, and YugabyteDB and
+CockroachDB use single-node configurations. These are local development setups.
+
+MongoDB, ClickHouse, Databend and SurrealDB accept `--user`/`--password`.
+ArangoDB uses the root user with `--password`. Qdrant and SpiceDB generate a
+key by default, configurable with `--password` and readable with `token`.
+Cassandra, ScyllaDB, Vearch, TiDB, YugabyteDB and CockroachDB use unauthenticated
+local development modes; CockroachDB starts with `--insecure`.
+
+SpiceDB's PostgreSQL, Databend's metadata and filesystem storage, and Vearch's
+master/router/partition data are kept together on the ZFS branch. TigerBeetle
+formats its data file only on first creation. Image wrappers are generated
+from PureScript. Images must provide a build for the Linux guest's CPU
+architecture; available architectures depend on the upstream tag.
+
+Databend, ClickHouse, Cassandra, ScyllaDB and YugabyteDB request 6 GiB when
+creating a new engine. Existing engines retain their configured size. For
+parallel branches of heavier servers, resize the shared VM as needed:
+
+```sh
+bsdkrun docker stop
+bsdkrun update bsdkrun-docker --cpus 4 --mem 6144
+bsdkrun docker start --publish-bind 127.0.0.1
+```
+
+Pinecone is excluded: its local emulator was discontinued upstream.
+
 ## Development and CI
 
 ```sh
 npm test                         # PureScript suites + Bun CLI, HTTP and CI tests
 npm run build:bin
-npm run test:e2e                  # all seven live Linux suites, sequentially
+npm run test:e2e                  # all catalog live Linux suites, sequentially
 node bin/ci.js e2e duckdb         # one live profile
 SBX_E2E_OS=freebsd node bin/ci.js e2e postgres
 SBX_E2E_OS=netbsd node bin/ci.js e2e mariadb
@@ -230,6 +298,10 @@ locked `setup-purescript@v0.2.0` module. CI decisions, release validation and
 cleanup live in `src/Ci` as PureScript; JavaScript supplies host/driver I/O.
 Logs stream with progress heartbeats. Diagnostics go to
 `.fluentci/test-logs/DATABASE/OS/` and are uploaded even after failure.
+
+GitHub tests run one database per matrix job, including its unit tests and
+protocol-specific persistence/branch suite. Set `DBSANDBOX_E2E_DATABASE` to
+select a single service when running `npm run test:e2e` locally.
 
 A `v*` tag matching `package.json` tests the project, builds three target
 archives, verifies executable architecture, and publishes them with checksums
