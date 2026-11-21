@@ -1,7 +1,8 @@
 import { test, expect } from 'bun:test';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, chmodSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, chmodSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { Left, Right } from '../output/Data.Either/index.js';
 import { decode, persist } from '../output/Ci.Environment/index.js';
 import { targets, verifyBinary, verifyVersion } from '../output/Ci.Release/index.js';
@@ -103,4 +104,23 @@ test('process timeout settles even when a detached descendant holds output pipes
   const source = 'const {spawn}=require("node:child_process"); spawn(process.execPath,["-e","setTimeout(()=>{},1500)"],{detached:true,stdio:"inherit"}).unref();';
   await expect(promise(command({program:process.execPath,args:['-e',source],env:{},cwd:'',timeout:250,output:()=>()=>{}}))).rejects.toThrow('timed out');
   expect(Date.now()-started).toBeLessThan(1200);
+});
+
+
+test('bootstrap exports the validated managed PATH when the runner cannot find Bun', () => {
+  const node = spawnSync('node', ['-p', 'process.execPath'], {encoding:'utf8'}).stdout.trim();
+  expect(node).not.toBe('');
+  const dir=mkdtempSync(join(tmpdir(),'dbsandbox-bootstrap-')), managed=join(dir,'managed'), empty=join(dir,'runner'), calls=join(dir,'calls'), github=join(dir,'github-env'), setup=join(dir,'setup.json');
+  mkdirSync(managed);mkdirSync(empty);
+  try {
+    const environment=[{name:'PATH',value:managed},{name:'BUN_INSTALL',value:join(dir,'bun')}];
+    writeFileSync(setup,'setup progress\n'+JSON.stringify({environment}));
+    writeFileSync(join(managed,'bun'),`#!${node}\nimport{appendFileSync}from'node:fs';import{spawnSync}from'node:child_process';const args=process.argv.slice(2);appendFileSync(process.env.BOOTSTRAP_CALLS,JSON.stringify({args,path:process.env.PATH})+'\\n');if(args[0]==='install')process.exit(Number(process.env.INSTALL_RESULT||0));const result=spawnSync(${JSON.stringify(process.execPath)},args,{env:process.env,stdio:'inherit'});if(result.error)throw result.error;process.exit(result.status??1);`,{mode:0o755});
+    const env={...process.env,PATH:empty,GITHUB_ENV:github,BOOTSTRAP_CALLS:calls};
+    expect(spawnSync('bun',['--version'],{env}).error?.code).toBe('ENOENT');
+    const run=spawnSync(node,['bin/bootstrap-ci.mjs',setup],{env,encoding:'utf8',timeout:15000});expect(run.status,run.stderr).toBe(0);
+    const commands=readFileSync(calls,'utf8').trim().split('\n').map(JSON.parse);expect(commands.map(c=>c.args)).toEqual([['install','--frozen-lockfile'],['bin/ci.js','export-env',setup]]);expect(commands.every(c=>c.path===managed)).toBe(true);
+    const exported=readFileSync(github,'utf8');expect(exported).toContain('PATH<<fluentci_');expect(exported).toContain(managed);expect(exported).toContain('BUN_INSTALL<<fluentci_');
+    const failed=join(dir,'failed-env');writeFileSync(calls,'');const failure=spawnSync(node,['bin/bootstrap-ci.mjs',setup],{env:{...env,INSTALL_RESULT:'17',GITHUB_ENV:failed},encoding:'utf8',timeout:15000});expect(failure.status).toBe(17);expect(existsSync(failed)).toBe(false);expect(readFileSync(calls,'utf8').trim().split('\n')).toHaveLength(1);
+  } finally {rmSync(dir,{recursive:true,force:true});}
 });

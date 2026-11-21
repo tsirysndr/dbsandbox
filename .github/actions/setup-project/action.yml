@@ -27,11 +27,8 @@ runs:
         fluentci --check-update=false run --frozen-lockfile setup-purescript@v0.2.0 setup \
           --version 0.15.16 --spago-version 1.0.5 \
           --node-version 24.22.2 --bun-version 1.4.5 > .fluentci/setup.json
-    - name: Bootstrap and build PureScript CI code
+    - name: Build PureScript CI code and export the toolchain environment
       shell: bash
       env:
         BSDKRUN_NO_AUTO_INSTALL: '1'
       run: node bin/bootstrap-ci.mjs .fluentci/setup.json
-    - name: Export the validated toolchain environment
-      shell: bash
-      run: bun bin/ci.js export-env .fluentci/setup.json
