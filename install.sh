@@ -24,7 +24,15 @@ HELP
 [ "$#" -le 1 ] || die 'expected at most one version argument (use --help)'
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 
-printf '\033[38;2;0;255;195mdbsandbox\033[0m\n\n'
+printf '\033[38;2;0;255;195m'
+cat <<'BANNER'
+       ____                         ____
+  ____/ / /_  _________ _____  ____/ / /_  ____  _  __
+ / __  / __ \/ ___/ __ `/ __ \/ __  / __ \/ __ \| |/_/
+/ /_/ / /_/ (__  ) /_/ / / / / /_/ / /_/ / /_/ />  <
+\__,_/_.___/____/\__,_/_/ /_/\__,_/_.___/\____/_/|_|
+BANNER
+printf '\033[0m\n'
 
 version=${1:-${DBSANDBOX_VERSION:-latest}}
 case "$version" in
