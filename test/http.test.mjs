@@ -18,6 +18,8 @@ test('API profiles separate MySQL from MariaDB and keep tokens out of URLs and c
   expect(find('mysql').value0.profile.product).toBe('MySQL');
   expect(mysql.env({user:'app',password:'secret',db:'demo'})).toEqual({MYSQL_ROOT_PASSWORD:'secret',MYSQL_DATABASE:'demo',MYSQL_USER:'app',MYSQL_PASSWORD:'secret'});
   expect(mysql.env(mysql.defaults).MYSQL_USER).toBeUndefined();
+  expect(mysql.command('8.4').value0).toContain('--skip-log-bin');
+  expect(mysql.ready({})('8.4')(mysql.defaults).join(' ')).toContain('SELECT 1');
   expect(typesense.http.value0.headers({password:'secret'})).toEqual({'X-TYPESENSE-API-KEY':'secret'});
   expect(typesense.url('30.2')({password:'secret'})(8108)).not.toContain('secret');
   for(const p of [typesense,chroma]) {expect(p.dataDir({})).toBe('/data');expect(p.linuxOnly).toBe(true);expect(p.dialect).toBe('');}
