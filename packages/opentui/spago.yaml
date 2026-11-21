@@ -1,0 +1,8 @@
+package:
+  name: opentui
+  description: PureScript component and renderer bindings for OpenTUI
+  dependencies:
+    - aff
+    - aff-promise
+    - effect
+    - prelude

@@ -1,0 +1,11 @@
+package:
+  name: drizzle
+  description: Typed synchronous Drizzle ORM bindings for Bun SQLite
+  dependencies:
+    - arrays
+    - effect
+    - js-date
+    - maybe
+    - nullable
+    - prelude
+    - unsafe-coerce
