@@ -97,6 +97,7 @@ planValid jobs action = case Profiles.find action.database of
         if not (Inventory.canDelete e) then Left "Cannot delete the selected branch, main, or the dataset mounted by the parent server"
         else Right { operation: App.run db.profile (Branch { name: Just e.state.branch, arg: Nothing, delete: true, from: Nothing, port: Nothing }), url: "", port: 0, kind: "operation" }
       Just e | e.kind == "data" && action.action == "branch" -> pure $ Right { operation: App.run db.profile (Branch { name: Just action.name, arg: Nothing, delete: false, from: Just e.state.branch, port: Nothing }), url: "", port: 0, kind: "operation" }
+      Just e | e.kind == "data" && action.action == "start" && db.profile.driver == "quack" && e.state.os == "linux" -> pure $ Right { operation: App.run db.profile (OnBranch e.state.branch (Start Parallel.emptyStart)), url: "", port: 0, kind: "operation" }
       Just e | e.kind == "data" && action.action /= "checkout" -> pure (Left "Switch to this ZFS branch first; it has no dedicated server")
       Just e -> case action.action of
         "start" -> pure $ Right { operation: Operations.runEntry e (Start Parallel.emptyStart), url: "", port: 0, kind: "operation" }

@@ -392,7 +392,12 @@
     }
     if (busy) return;
     if (key === 's' && keyboardRow.kind === 'data') {
-      send(keyboardRow, 'checkout');
+      send(
+        keyboardRow,
+        keyboardRow.database === 'duckdb' && keyboardRow.guest === 'linux'
+          ? 'start'
+          : 'checkout',
+      );
       return;
     }
     if (key === 'Enter') send(keyboardRow, 'checkout');
@@ -1007,13 +1012,17 @@
                         send(
                           row,
                           row.kind === 'data'
-                            ? 'checkout'
+                            ? row.database === 'duckdb' && row.guest === 'linux'
+                              ? 'start'
+                              : 'checkout'
                             : row.running
                               ? 'stop'
                               : 'start',
                         )}
                     >
-                      {#if row.kind === 'data'}<GitBranch
+                      {#if row.kind === 'data' && row.database === 'duckdb' && row.guest === 'linux'}<Play
+                          size={12}
+                        />Start server{:else if row.kind === 'data'}<GitBranch
                           size={12}
                         />Switch{:else if row.running}<Square
                           size={12}

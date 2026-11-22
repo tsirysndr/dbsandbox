@@ -125,7 +125,9 @@ dispatch base p cmd = case cmd of
     st <- state (root p)
     if name == st.branch then dispatch base (root p) nested
     else case A.find (\e -> e.name == name) list of
-      Nothing -> fail ("No parallel instance for '" <> name <> "'; create it with branch NAME")
+      Nothing -> case nested of
+        Start opts | p.driver == "quack" && st.os == "linux" -> locked p (promoteData base (root p) name opts.port)
+        _ -> fail ("No parallel instance for '" <> name <> "'; create it with branch NAME")
       Just e -> dispatch base (scope p e) nested
   Branch o -> branch base p o
   Checkout o -> locked p do
@@ -135,9 +137,29 @@ dispatch base p cmd = case cmd of
       when o.create $ fail "Branch already exists"
       activate p (Just o.name)
       say ("Selected parallel branch '" <> o.name <> "'; all servers keep running") $> 0
-    else do
+    else if p.driver /= "quack" then do
       activate p Nothing
       checkoutBase base p cmd o list
+    else do
+      parent <- state (root p)
+      if p.driver == "quack" && parent.os == "linux" then
+        if o.name == parent.branch then do
+          when o.create $ fail "Branch already exists"
+          activate p Nothing
+          say ("Selected parent branch '" <> o.name <> "'; all servers keep running") $> 0
+        else do
+          when o.create do
+            unless (I.validName o.name) $ fail "Invalid branch name"
+            vol <- volume p
+            when (A.any (\b -> b.name == o.name) vol.branches) $ fail "Branch already exists"
+            selected <- liftEffect (Store.active (I.volumeName p.tool))
+            void $ Zfs.branch (I.volumeName p.tool) o.name (Just (fromMaybe parent.branch selected))
+          result <- promoteData base (root p) o.name Nothing
+          when (result == 0) (activate p (Just o.name))
+          pure result
+      else do
+        activate p Nothing
+        checkoutBase base p cmd o list
   Destroy o -> locked p do
     confirmed <-
       if o.yes then pure true
@@ -209,6 +231,28 @@ dispatch base p cmd = case cmd of
     st <- state p
     if st.os == "linux" then base p cmd else bsdCommand p st cmd
   _ -> base p cmd
+
+-- Existing DuckDB data branches become independent servers without re-cloning
+-- or remounting the parent. Selection is independent of every server's lifetime.
+promoteData :: Runner -> Profile -> String -> Maybe Int -> Aff Int
+promoteData base p name requested = do
+  unless (name == "main" || I.validName name) $ fail "Invalid branch name"
+  parent <- state p
+  unless (parent.os == "linux") $ fail "Parallel DuckDB servers require Linux"
+  vol <- volume p
+  unless (A.any (\b -> b.name == name) vol.branches) $ fail "Data branch does not exist"
+  list <- entries p
+  when (A.any (\e -> e.name == name) list) $ fail "Parallel branch already exists"
+  let child = p { tool = I.instanceName p.tool name, cli = (root p).cli <> " --branch " <> name }
+  used <- reserved p ""
+  Engine.ensureEngine
+  guestPorts <- Ports.read
+  let initial = Ports.seed guestPorts (if parent.port > 0 && parent.port < 65535 then parent.port + 1 else p.guestPort + 1)
+  port <- selectPort used (\candidate -> if Ports.available (requested == Nothing) guestPorts candidate then available p parent candidate else pure false) requested initial
+  liftEffect (State.saveFor child (parent { branch = name, port = port }))
+  saveEntries p (list <> [ { name, tool: child.tool, running: false } ])
+  say ("Starting existing branch '" <> name <> "' as an independent server ...")
+  startInstance base child emptyStart
 
 startInstance :: Runner -> Profile -> StartOpts -> Aff Int
 startInstance base p o = do
