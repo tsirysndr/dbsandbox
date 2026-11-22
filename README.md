@@ -269,7 +269,13 @@ Put `--branch NAME` after the database name and **before the command** to target
 an instance without changing your selection. `checkout NAME` selects an
 existing parallel instance; other servers keep running. For branches without
 an instance, checkout keeps the parent-server mount-switching behavior.
-`checkout -b NAME` retains that behavior too.
+`checkout -b NAME` retains that behavior for other database profiles.
+
+Linux DuckDB keeps every branch server running independently. Checking out an
+existing data-only DuckDB branch starts it as a separate server with its own
+port; `duckdb checkout -b NAME` creates and selects a new parallel server.
+`dbsandbox duckdb --branch NAME start` starts an old data-only branch without
+changing selection. Checking out `main` leaves all other branch servers running.
 
 Linux runs one container per instance, bind-mounting only its own dataset.
 BSD PostgreSQL/MariaDB/MySQL forks run separate processes with their own data paths,
@@ -481,3 +487,9 @@ select a single service when running `bun run test:e2e` locally.
 A `v*` tag matching `package.json` tests the project, builds three target
 archives, verifies executable architecture, and publishes them with checksums
 using the workflow's GitHub token. No extra repository secret is required.
+
+### Cluster management
+
+The Rust/Neon cluster module exposes one Axum API for databases and branches across dbsandbox instances, using configurable Consul or etcd state. The same `dbsandbox` executable supports `cluster serve` and `cluster join`. See the [cluster module guide](packages/cluster/README.md) for setup, API routes, and current storage limits.
+
+See the [horizontal branch architecture and diagrams](docs/cluster-architecture.md) for per-branch placement and cross-node snapshot transfer.
