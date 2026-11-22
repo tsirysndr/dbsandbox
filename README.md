@@ -89,9 +89,10 @@ bun run build:bin
 
 The core executable needs neither Node.js nor Bun at runtime. Optional host
 tools such as Drizzle Studio/drizzle-kit, pgcli/mycli and pgroll keep their
-respective host dependencies. Source installs include Drizzle's Node packages;
-standalone users can install `drizzle-kit`, `drizzle-orm` and the chosen driver
-globally with Bun, and `uv` or `pipx` for the Python clients.
+respective host dependencies. Source installs include Drizzle's Node packages. Standalone Studio checks that
+Drizzle can load the database driver and uses an isolated, pinned toolchain under
+`~/.config/dbsandbox/tools` when needed (Bun installs it on first use). Global
+packages are preserved. Python clients can use `uv` or `pipx`.
 
 The GitHub release workflow builds macOS ARM64, Linux x86_64 and Linux ARM64
 archives and `SHA256SUMS`. `install.sh` consumes a published release, checks its
@@ -493,3 +494,9 @@ using the workflow's GitHub token. No extra repository secret is required.
 The Rust/Neon cluster module exposes one Axum API for databases and branches across dbsandbox instances, using configurable Consul or etcd state. The same `dbsandbox` executable supports `cluster serve` and `cluster join`. See the [cluster module guide](packages/cluster/README.md) for setup, API routes, and current storage limits.
 
 See the [horizontal branch architecture and diagrams](docs/cluster-architecture.md) for per-branch placement and cross-node snapshot transfer.
+
+Debian runtime and tool images use Trixie. Package installation runs in a temporary
+RAM-backed root during image builds, then copies the finished filesystem into a
+fresh layer. This avoids dpkg stale-handle failures on legacy virtio-fs Docker
+stores while preserving the running database containers. Runtime image tags
+include the Dockerfile hash so updated base images are selected for new builds.
