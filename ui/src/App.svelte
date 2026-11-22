@@ -447,7 +447,10 @@
       hasSnapshot = true;
       error = '';
       if (!available.some((db) => db.name === database)) {
-        database = available[0]?.name || '';
+        database =
+          available.find((db) => db.name === 'postgres')?.name ||
+          available[0]?.name ||
+          '';
         chooseDatabase();
       }
     } catch (e) {
