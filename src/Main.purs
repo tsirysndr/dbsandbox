@@ -15,6 +15,9 @@ import Sbx.Database.App as App
 import Sbx.Cli as Cli
 import Sbx.Cli.Help as Help
 import Sbx.Cli.Global as Global
+import Sbx.Cluster.App as Cluster
+import Sbx.Cluster.Worker as ClusterWorker
+import Sbx.Cluster.Native as ClusterNative
 
 version :: String
 version = "0.2.0"
@@ -22,14 +25,19 @@ version = "0.2.0"
 main :: Effect Unit
 main = do
   Help.setup
-  action <- N.internalAction
-  case toMaybe action of
-    Just body -> runAff_ finish (Control.execute body)
+  worker <- ClusterNative.internalWorker
+  case toMaybe worker of
+    Just body -> runAff_ finish (ClusterWorker.execute body)
     Nothing -> do
-      selected <- Cli.parseRoot version
-      runAff_ finish case selected of
-        Cli.Database profile command -> App.run profile command
-        Cli.Global command -> Global.run command
+      action <- N.internalAction
+      case toMaybe action of
+        Just body -> runAff_ finish (Control.execute body)
+        Nothing -> do
+          selected <- Cli.parseRoot version
+          runAff_ finish case selected of
+            Cli.Database profile command -> App.run profile command
+            Cli.Global command -> Global.run command
+            Cli.Cluster command -> Cluster.run command
   where
   finish = case _ of
     Left err -> error ("error: " <> message err) *> setExitCode 1

@@ -1,0 +1,17 @@
+{
+  "name": "@dbsandbox/cluster",
+  "version": "0.2.0",
+  "description": "Rust/Neon cluster coordinator for dbsandbox",
+  "type": "commonjs",
+  "main": "index.cjs",
+  "types": "index.d.ts",
+  "files": [
+    "index.cjs",
+    "index.d.ts",
+    "native.node"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

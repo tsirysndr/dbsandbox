@@ -13,11 +13,12 @@
     "docs/assets/tui-preview.png",
     "output/**/*.js",
     "output/package.json",
-    "ui/generated"
+    "ui/generated",
+    "packages/cluster"
   ],
   "scripts": {
-    "build": "spago build && bun run build:ui",
-    "test": "bun run build && spago test && bun run test:cli",
+    "build": "spago build && bun run build:ui && bun run build:cluster",
+    "test": "bun run build && spago test && cargo test --release --locked --workspace && bun run test:cli",
     "prepare": "bun run build",
     "build:bin": "bun run build && bun bin/ci.js build-binary",
     "test:cli": "bun test --timeout 120000 test/*.test.mjs",
@@ -28,7 +29,9 @@
     "format:web": "prettier --write 'ui/src/**/*.{svelte,js,css}' ui/build.mjs",
     "format": "bun run format:purs && bun run format:web && bun run format:npm",
     "format:check": "purs-tidy check 'src/**/*.purs' 'packages/**/*.purs' 'test/Test/**/*.purs' '.fluentci/test/src/**/*.purs' && prettier --check 'ui/src/**/*.{svelte,js,css}' ui/build.mjs 'npm/**/*.js' npm/package.json",
-    "format:npm": "prettier --write 'npm/**/*.js' npm/package.json"
+    "format:npm": "prettier --write 'npm/**/*.js' npm/package.json",
+    "build:cluster": "node scripts/build-cluster.mjs",
+    "test:cluster": "bun run build:cluster && cargo test --release --locked --workspace && node --test test/cluster.test.mjs test/cluster-worker.test.mjs test/duckdb-parallel.test.mjs"
   },
   "dependencies": {
     "@bsdkrun/sdk": "^0.8.0",

@@ -21,8 +21,9 @@ import Options.Applicative (Parser, ReadM, argument, command, commandGroup, cust
 import Sbx.Database.Profiles as Profiles
 import Sbx.Database.Profile (Os(..), Profile, parseOs)
 import Sbx.Cli.GlobalCommand as Global
+import Sbx.Cluster.Cli as ClusterCli
 
-data RootCommand = Database Profile Command | Global Global.GlobalCommand
+data RootCommand = Database Profile Command | Global Global.GlobalCommand | Cluster ClusterCli.Command
 
 type StartOpts =
   { os :: Maybe Os
@@ -303,7 +304,7 @@ parseRoot version = customExecParser (prefs showHelpOnEmpty) $ info (helper <*> 
   [ fullDesc
   , header "dbsandbox — databases with parallel ZFS branches"
   , progDesc "Run database, search and authorization services in bsdkrun sandboxes. branch NAME starts an independent copy-on-write instance."
-  , footer "Examples: dbsandbox postgres start; dbsandbox duckdb branch feature; dbsandbox sqlite --branch feature url. Disable colors with --no-color or NO_COLOR=1."
+  , footer "Examples: dbsandbox postgres start; dbsandbox duckdb branch feature; dbsandbox sqlite --branch feature url. Cluster API: dbsandbox cluster serve --config FILE; dbsandbox cluster join --server URL --config FILE. Disable colors with --no-color or NO_COLOR=1."
   ]
   where
   versionOption = infoOption ("dbsandbox " <> version) (long "version" <> help "Show the version")
@@ -320,7 +321,8 @@ parseRoot version = customExecParser (prefs showHelpOnEmpty) $ info (helper <*> 
     in Database p (maybe cmd (flip OnBranch cmd) branch)
   json = switch (long "json" <> help "Print JSON")
   global =
-    [ command "ps" $ info
+    [ command "cluster" (info (helper <*> (Cluster <$> ClusterCli.parser)) (progDesc "Horizontally scalable database branches with a Consul or etcd state backend"))
+    , command "ps" $ info
         ( helper <*>
             ( ado
                 all <- switch (long "all" <> short 'a' <> help "Include stopped sandboxes")
