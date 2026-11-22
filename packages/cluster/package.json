@@ -1,6 +1,6 @@
 {
   "name": "@dbsandbox/cluster",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Rust/Neon cluster coordinator for dbsandbox",
   "type": "commonjs",
   "main": "index.cjs",

@@ -10,7 +10,7 @@ usage() {
 Usage: sh install.sh [VERSION]
 
 Downloads the latest dbsandbox release, verifies SHA256SUMS, and installs
-its executable to ~/.local/bin. VERSION may be v0.2.0 or 0.2.0.
+its executable to ~/.local/bin. VERSION may be v0.2.1 or 0.2.1.
 
 Environment:
   DBSANDBOX_VERSION       Release to install (default: latest).
@@ -40,7 +40,7 @@ case "$version" in
   *)
     case "$version" in v*) ;; *) version="v$version" ;; esac
     printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' \
-      || die 'expected a release version such as v0.2.0'
+      || die 'expected a release version such as v0.2.1'
     base="https://github.com/tsirysndr/dbsandbox/releases/download/$version"
     ;;
 esac

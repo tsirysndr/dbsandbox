@@ -20,7 +20,7 @@ import Sbx.Cluster.Worker as ClusterWorker
 import Sbx.Cluster.Native as ClusterNative
 
 version :: String
-version = "0.2.0"
+version = "0.2.1"
 
 main :: Effect Unit
 main = do

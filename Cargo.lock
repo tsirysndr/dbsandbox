@@ -168,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "dbsandbox-cluster"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "dbsandbox-cluster-neon"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "dbsandbox-cluster",
  "neon",

@@ -10,7 +10,7 @@ const run = (args, env={}) => spawnSync(process.execPath, ['bin/dbsandbox.js', .
 });
 
 test('one CLI exposes all database profiles and version without a VM runtime', () => {
-  expect(run(['--version']).stdout.trim()).toBe('dbsandbox 0.2.0');
+  expect(run(['--version']).stdout.trim()).toBe('dbsandbox 0.2.1');
   const help=run(['--help']); expect(help.status,help.stderr).toBe(0);
   for (const {name} of all) expect(help.stdout).toContain(name);
   for (const alias of ['postgresql','pg','libsql']) expect(run([alias,'--help']).status).toBe(0);
