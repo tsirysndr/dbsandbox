@@ -3,6 +3,7 @@
 module Sbx.UI.DuckDB (run, dockerfile, runArgs, relayPort) where
 
 import Prelude
+import Sbx.Database.Debian as Debian
 import Bsdkrun.Docker as Docker
 import Bsdkrun.Port as Port
 import Control.Monad.Error.Class (throwError)
@@ -27,21 +28,24 @@ relayPort port = if port == 4214 then 4215 else 4214
 
 dockerfile :: String -> String
 dockerfile base = S.joinWith "\n"
-  [ "FROM " <> base
-  , "RUN apt-get update && apt-get install -y --no-install-recommends socat && rm -rf /var/lib/apt/lists/*"
-  , "RUN duckdb :memory: -no-agent -no-init -bail -c 'INSTALL ui;'"
-  , script "/usr/local/bin/dbsandbox-ui-connect"
-      [ "socat - \"TCP6:[::1]:$SBX_UI_PORT\" 2>/dev/null || exec socat - \"TCP4:127.0.0.1:$SBX_UI_PORT\"" ]
-  , script "/usr/local/bin/dbsandbox-duckdb-ui"
-      [ ": \"${SBX_PASSWORD:?}\" \"${SBX_DB_PORT:?}\" \"${SBX_UI_PORT:?}\" \"${SBX_RELAY_PORT:?}\""
-      -- The official UI binds loopback. Relay only inside this container;
-      -- bsdkrun restricts the published port to the host's loopback.
-      , "socat \"TCP4-LISTEN:$SBX_RELAY_PORT,bind=0.0.0.0,reuseaddr,fork\" EXEC:/usr/local/bin/dbsandbox-ui-connect &"
-      , "printf '%s\\n' \"LOAD ui; SET ui_local_port = $SBX_UI_PORT;\" \"ATTACH 'quack:sbx-server:$SBX_DB_PORT' AS sbx (TOKEN getenv('SBX_PASSWORD'), DISABLE_SSL true);\" 'CALL start_ui_server();' '.shell sleep infinity' > /tmp/dbsandbox-ui.init"
-      , "exec duckdb :memory: -no-agent -bail -init /tmp/dbsandbox-ui.init"
+  ( Debian.layer base
+      [ "apt-get update && apt-get install -y --no-install-recommends socat && rm -rf /var/lib/apt/lists/*"
+      , "duckdb :memory: -no-agent -no-init -bail -c 'INSTALL ui;'"
       ]
-  , "ENTRYPOINT [\"/usr/local/bin/dbsandbox-duckdb-ui\"]"
-  ]
+      <>
+        [ script "/usr/local/bin/dbsandbox-ui-connect"
+            [ "socat - \"TCP6:[::1]:$SBX_UI_PORT\" 2>/dev/null || exec socat - \"TCP4:127.0.0.1:$SBX_UI_PORT\"" ]
+        , script "/usr/local/bin/dbsandbox-duckdb-ui"
+            [ ": \"${SBX_PASSWORD:?}\" \"${SBX_DB_PORT:?}\" \"${SBX_UI_PORT:?}\" \"${SBX_RELAY_PORT:?}\""
+            -- The official UI binds loopback. Relay only inside this container;
+            -- bsdkrun restricts the published port to the host's loopback.
+            , "socat \"TCP4-LISTEN:$SBX_RELAY_PORT,bind=0.0.0.0,reuseaddr,fork\" EXEC:/usr/local/bin/dbsandbox-ui-connect &"
+            , "printf '%s\\n' \"LOAD ui; SET ui_local_port = $SBX_UI_PORT;\" \"ATTACH 'quack:sbx-server:$SBX_DB_PORT' AS sbx (TOKEN getenv('SBX_PASSWORD'), DISABLE_SSL true);\" 'CALL start_ui_server();' '.shell sleep infinity' > /tmp/dbsandbox-ui.init"
+            , "exec duckdb :memory: -no-agent -bail -init /tmp/dbsandbox-ui.init"
+            ]
+        , "ENTRYPOINT [\"/usr/local/bin/dbsandbox-duckdb-ui\"]"
+        ]
+  )
 
 runArgs :: String -> String -> String -> State -> Int -> Array String
 runArgs image name server st port =

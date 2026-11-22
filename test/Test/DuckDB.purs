@@ -10,7 +10,7 @@ import Effect.Exception (throw)
 import Sbx.Database.DuckDB (profile, databaseFile, versionAllowed)
 import Bsdkrun.Options as Options
 import Sbx.Runtime.Bsd (createOptions)
-import Sbx.Runtime.Engine (mountPoint, runArgs, runtimeVersionAllowed)
+import Sbx.Runtime.Engine (serverImage, mountPoint, runArgs, runtimeVersionAllowed)
 import Sbx.Database.Profile (ClientCmd(..), Os(..), parseOs)
 
 assert :: String -> Boolean -> Effect Unit
@@ -34,7 +34,12 @@ main = do
   assert "branch mountpoint" (mountPoint profile "feature" == "/mnt/duckdb-sbx-feature")
   let argv = runArgs profile st c
   assert "Quack uses stdin, init, a published port and a mounted dataset"
-    (Array.elem "-i" argv && Array.elem "--init" argv && Array.elem "9494:9494" argv && Array.elem "/mnt/duckdb-sbx-feature:/var/lib/duckdb" argv && Array.elem "duckdb-sbx-runtime" argv)
+    (Array.elem "-i" argv && Array.elem "--init" argv && Array.elem "9494:9494" argv && Array.elem "/mnt/duckdb-sbx-feature:/var/lib/duckdb" argv && Array.elem (serverImage profile st.version) argv)
+  assert "runtime images track their Dockerfile and version"
+    ( serverImage profile "2.0.0" /= "duckdb-sbx-runtime"
+        && serverImage profile "2.0.0" /= serverImage profile "3.0.0"
+        && serverImage profile "2.0.0" /= serverImage (profile { containerDockerfile = Just (const "FROM debian:trixie") }) "2.0.0"
+    )
   assert "switch mounts another branch" (Array.elem "/mnt/duckdb-sbx-main:/var/lib/duckdb" (runArgs profile (st { branch = "main" }) c))
   case profile.containerDockerfile of
     Nothing -> throw "official distroless image needs a runtime wrapper"

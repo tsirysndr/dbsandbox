@@ -17,6 +17,7 @@
 module Sbx.Database.Sqlite (profile) where
 
 import Prelude
+import Sbx.Database.Debian as Debian
 import Data.Maybe (Maybe(..))
 import Data.String as String
 import Data.Tuple.Nested ((/\))
@@ -69,13 +70,11 @@ profile =
   , rootDisk: const Nothing
   , tools: Just
       { image: toolsImage
-      , dockerfile: String.joinWith "\n"
-          [ "FROM debian:bookworm-slim"
-          , "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xz-utils sqlite3 pipx && rm -rf /var/lib/apt/lists/* \\"
-          , " && PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install litecli \\"
-          , " && curl --proto '=https' --tlsv1.2 -LsSf https://github.com/tursodatabase/turso/releases/latest/download/turso_cli-installer.sh | sh \\"
-          , " && install -m 755 /root/.turso/tursodb /usr/local/bin/tursodb && rm -rf /root/.turso"
-          , ""
+      , dockerfile: String.joinWith "\n" $ Debian.layer "debian:trixie-slim"
+          [ "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xz-utils sqlite3 pipx && rm -rf /var/lib/apt/lists/*"
+          , "PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install litecli"
+          , "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/tursodatabase/turso/releases/latest/download/turso_cli-installer.sh | sh"
+          , "install -m 755 /root/.turso/tursodb /usr/local/bin/tursodb && rm -rf /root/.turso"
           ]
       }
   -- sqld keeps the database under its --db-path: one directory per database

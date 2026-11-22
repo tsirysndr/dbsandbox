@@ -2,6 +2,7 @@
 module Sbx.Database.DuckDB (profile, databaseFile, versionAllowed, versionMajor, versionCommand) where
 
 import Prelude
+import Sbx.Database.Debian as Debian
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Array as Array
 import Data.Int as Int
@@ -61,17 +62,19 @@ profile =
   -- The official image is distroless. Copy its CLI into Debian for
   -- server/client scripts and ssh/exec.
   , containerDockerfile: Just \image -> String.joinWith "\n"
-      [ "FROM " <> image <> " AS duckdb"
-      , "FROM debian:bookworm-slim"
-      , "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libstdc++6 && rm -rf /var/lib/apt/lists/*"
-      , "COPY --from=duckdb /duckdb /usr/local/bin/duckdb"
-      , "WORKDIR /var/lib/duckdb"
-      , "RUN duckdb :memory: -no-init -c 'INSTALL quack; INSTALL httpfs;'"
-      , installScript "/usr/local/bin/duckdb-sbx-server" serverScript
-      , installScript "/usr/local/bin/duckdb-sbx-client" clientScript
-      , "CMD [\"duckdb-sbx-server\"]"
-      , ""
-      ]
+      ( [ "FROM " <> image <> " AS duckdb" ]
+          <> Debian.layer "debian:trixie-slim"
+            [ "apt-get update && apt-get install -y --no-install-recommends ca-certificates libstdc++6 && rm -rf /var/lib/apt/lists/*" ]
+          <>
+            [ "COPY --from=duckdb /duckdb /usr/local/bin/duckdb"
+            , "WORKDIR /var/lib/duckdb"
+            , "RUN duckdb :memory: -no-init -c 'INSTALL quack; INSTALL httpfs;'"
+            , installScript "/usr/local/bin/duckdb-sbx-server" serverScript
+            , installScript "/usr/local/bin/duckdb-sbx-client" clientScript
+            , "CMD [\"duckdb-sbx-server\"]"
+            , ""
+            ]
+      )
   , versionNote: ". Requires DuckDB >= 2. Linux serves Quack on port 9494; BSD guests use file access. No Drizzle support"
   , linuxOnly: false
   , hasCredentials: false

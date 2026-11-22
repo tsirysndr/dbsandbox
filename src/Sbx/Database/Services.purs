@@ -256,7 +256,7 @@ spicedb = (http "spicedb" "SpiceDB" "authzed/spicedb" 8443 "/data" "")
   , env = \c -> O.fromFoldable [ "SPICEDB_GRPC_PRESHARED_KEY" /\ c.password, "SPICEDB_DATASTORE_ENGINE" /\ "postgres", "SPICEDB_DATASTORE_CONN_URI" /\ "postgres://postgres@127.0.0.1:5432/spicedb?sslmode=disable", "SPICEDB_HTTP_ENABLED" /\ "true", "SPICEDB_HTTP_ADDR" /\ "0.0.0.0:8443" ]
   , containerDockerfile = Just \tag -> S.joinWith "\n"
       [ "FROM " <> image "authzed/spicedb" tag <> " AS upstream"
-      , "FROM postgres:17-bookworm"
+      , "FROM postgres:17-trixie"
       , "COPY --from=upstream /usr/local/bin/spicedb /usr/local/bin/spicedb"
       , "COPY --from=upstream /usr/local/bin/grpc_health_probe /usr/local/bin/grpc_health_probe"
       , script "/usr/local/bin/sbx-start" [ "mkdir -p /data/postgres; chown postgres:postgres /data/postgres", "if [ ! -f /data/postgres/PG_VERSION ]; then gosu postgres initdb -D /data/postgres --auth=trust; fi", "gosu postgres pg_ctl -D /data/postgres -o '-h 127.0.0.1 -c track_commit_timestamp=on' -w start", "if ! gosu postgres psql -h 127.0.0.1 -tAc \"SELECT 1 FROM pg_database WHERE datname='spicedb'\" | grep -q 1; then gosu postgres createdb -h 127.0.0.1 spicedb; fi", "spicedb datastore migrate head --skip-release-check=true", "exec spicedb serve --skip-release-check=true" ]
@@ -272,7 +272,7 @@ tigerbeetle = (http "tigerbeetle" "TigerBeetle" "ghcr.io/tigerbeetle/tigerbeetle
   , dockerArgs = nofile <> [ "--security-opt", "seccomp=unconfined", "--ulimit", "memlock=-1:-1" ]
   , containerDockerfile = Just \tag -> S.joinWith "\n"
       [ "FROM " <> image "ghcr.io/tigerbeetle/tigerbeetle" tag <> " AS upstream"
-      , "FROM debian:bookworm-slim"
+      , "FROM debian:trixie-slim"
       , "COPY --from=upstream /tigerbeetle /usr/local/bin/tigerbeetle"
       , script "/usr/local/bin/sbx-start" [ "if [ ! -f /data/0_0.tigerbeetle ]; then tigerbeetle format --cluster=0 --replica=0 --replica-count=1 --development /data/0_0.tigerbeetle; fi", "exec tigerbeetle start --addresses=0.0.0.0:3000 --development --cache-grid=256MiB /data/0_0.tigerbeetle" ]
       , "ENTRYPOINT [\"/usr/local/bin/sbx-start\"]"

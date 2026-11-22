@@ -290,10 +290,11 @@ toolsTag t = t.image <> ":" <> String.take 12 (Native.sha256 t.dockerfile)
 -- | The image a version runs as the container: the helper image when the
 -- | profile names it (server-less engines), else the version's own.
 serverImage :: Profile -> String -> String
-serverImage p _ | not (isNothing p.containerDockerfile) = Identity.volumeName p.tool <> "-runtime"
-serverImage p version = case p.tools of
-  Just t | p.image version == t.image -> toolsTag t
-  _ -> p.image version
+serverImage p version = case p.containerDockerfile of
+  Just dockerfile -> Identity.volumeName p.tool <> "-runtime:" <> String.take 12 (Native.sha256 (dockerfile (p.image version)))
+  Nothing -> case p.tools of
+    Just t | p.image version == t.image -> toolsTag t
+    _ -> p.image version
 
 -- | The profile's helper image for the CLIs, built in the engine the first
 -- | time from its inline Dockerfile (a context directory under the tool's
