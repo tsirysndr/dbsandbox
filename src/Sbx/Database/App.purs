@@ -40,6 +40,7 @@ import Sbx.UI.Browser as Browser
 import Sbx.UI.DuckDB as DuckUi
 import Sbx.Database.Profile (ClientCmd(..), Creds, FancyCmd(..), Migrations, Os(..), Profile, osName, parseOs)
 import Sbx.State.Types (State)
+import Sbx.Tools.Drizzle as Drizzle
 import Sbx.State as State
 
 run :: Profile -> Command -> Aff Int
@@ -789,22 +790,6 @@ fancyTool p extra = do
       runner <- pythonRunner
       Native.spawnInherit runner.cmd (runner.args <> argv (creds st) st.port <> extra) Object.empty
 
--- | How to run drizzle-kit: this package's own copy under node_modules when
--- | running from a checkout, otherwise a `drizzle-kit` on PATH (the compiled
--- | single binary has no node_modules; `bun add -g drizzle-kit drizzle-orm
--- | <driver>` provides one).
-drizzleKit :: Aff { cmd :: String, args :: Array String, where :: String }
-drizzleKit = do
-  root <- liftEffect Native.toolRoot
-  node <- liftEffect Native.nodePath
-  let bin = Native.pathJoin root "node_modules/drizzle-kit/bin.cjs"
-  local <- liftEffect (Native.fileExists bin)
-  onPath <- liftEffect (Native.findExecutable "drizzle-kit") <#> toMaybe
-  case local, onPath of
-    true, _ -> pure { cmd: node, args: [ bin ], where: bin }
-    _, Just cmd -> pure { cmd, args: [], where: cmd }
-    _, _ -> fail "drizzle-kit is not installed: `bun install` in the package, or `bun add -g drizzle-kit drizzle-orm` for the binary"
-
 -- | A drizzle config for the sandbox, written under the tool's config dir.
 drizzleConfig :: Profile -> State -> Aff String
 drizzleConfig p st = liftEffect do
@@ -826,7 +811,7 @@ studio p o = Browser.session do
   { state: st } <- requireRunning p
   os <- stateOs st
   unless (p.studioSupported os st.version) $ fail ("Drizzle Studio needs a network-reachable server, which " <> p.product <> " " <> st.version <> " on " <> st.os <> " does not provide")
-  kit <- drizzleKit
+  kit <- Drizzle.ensure p
   cfg <- drizzleConfig p st
   free <- Port.isFreeOn o.host o.port
   occupied <- Browser.listening o.host o.port
@@ -846,7 +831,7 @@ drizzle p args = do
   st <- requireState p
   os <- stateOs st
   unless (p.studioSupported os st.version) $ fail ("drizzle-kit needs a network-reachable server, which " <> p.product <> " " <> st.version <> " on " <> st.os <> " does not provide")
-  kit <- drizzleKit
+  kit <- Drizzle.ensure p
   dir <- liftEffect Native.cwd
   own <- liftEffect $ Array.foldM (\acc f -> (acc || _) <$> Native.fileExists (Native.pathJoin dir f)) false
     (map ("drizzle.config." <> _) [ "ts", "js", "mts", "cts", "mjs", "cjs", "json" ])
@@ -964,7 +949,7 @@ doctor p = do
   node <- liftEffect Native.nodeVersion
   let major = fromMaybe 0 (Int.fromString (String.takeWhile (_ /= String.codePointFromChar '.') (String.drop 1 node)))
   okNode <- check "node" (if major >= 22 then Just node else Nothing) (node <> " — Node 22 or newer is required")
-  kit <- attempt drizzleKit
+  kit <- attempt Drizzle.locate
   okKit <- if p.dialect == "" then pure true else check "drizzle-kit" (either (const Nothing) (Just <<< _.where) kit) (either message (const "") kit)
   runner <- attempt pythonRunner
   _ <- case p.fancy.cmd of
