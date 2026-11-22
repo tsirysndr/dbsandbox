@@ -30,7 +30,7 @@ jobs:
   build:
     name: Build ${{ matrix.platform }}
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -38,10 +38,13 @@ jobs:
         include:
           - platform: darwin-aarch64
             target: bun-darwin-arm64
+            runner: macos-15
           - platform: linux-x86_64
             target: bun-linux-x64-baseline
+            runner: ubuntu-latest
           - platform: linux-arm64
             target: bun-linux-arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
         with:

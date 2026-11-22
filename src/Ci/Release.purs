@@ -50,6 +50,8 @@ build = do
   target <- C.fromEither case A.find (\t -> t.platform == platform) targets of
     Just found -> Right found
     Nothing -> Left "Set RELEASE_PLATFORM to darwin-aarch64, linux-x86_64 or linux-arm64"
+  host <- liftEffect N.platform
+  C.demand "Build the Rust addon on the release target OS and architecture" (host.os == target.os && host.arch == target.arch)
   supplied <- liftEffect (N.env "BUN_TARGET")
   C.demand "BUN_TARGET does not match RELEASE_PLATFORM" (supplied == "" || supplied == target.bun)
   tag <- C.required "RELEASE_TAG"
@@ -64,7 +66,6 @@ build = do
   void $ C.run "bun" [ "build", "--compile", "--minify", "--target", target.bun, "bin/dbsandbox.js", "--outfile", executable ]
   liftEffect (N.chmod executable 493)
   liftEffect (N.readBytes executable) >>= \bytes -> C.fromEither (verifyBinary bytes platform)
-  host <- liftEffect N.platform
   when (host.os == target.os && host.arch == target.arch) do
     result <- C.run executable [ "--version" ]
     C.fromEither (verifyVersion tag version result.stdout)
@@ -79,7 +80,9 @@ build = do
 -- | Bun resolves OpenTUI's optional native imports while compiling, including
 -- | musl imports on glibc hosts. Install every variant before either build path.
 prepareNative :: Aff Unit
-prepareNative = void $ C.run "bun" [ "install", "--frozen-lockfile", "--ignore-scripts", "--os", "*", "--cpu", "*", "--libc", "*" ]
+prepareNative = do
+  void $ C.run "node" [ "scripts/build-cluster.mjs" ]
+  void $ C.run "bun" [ "install", "--frozen-lockfile", "--ignore-scripts", "--os", "*", "--cpu", "*", "--libc", "*" ]
 
 -- Only invoked by the contents:write publish job, never by tests or builds.
 publish :: Aff Unit

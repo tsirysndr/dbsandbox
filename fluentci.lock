@@ -140,6 +140,37 @@
         "x86_64",
         "aarch64"
       ]
+    },
+    "@fluentci.io/setup-rust@0.2.2": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-rust",
+      "version": "0.2.2",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-rust/v0.2.2/setup-rust.wasm",
+      "sha256": "e416bd36fa1f07227c4da40eb37d644bcddbe2650f5204664e37f2265977c96e",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-rust-0.2.2",
+      "cid": "bafyreidtz4ozpi4n4cqxiwp5ciyr4k3l3scdx3wzpl6wakfo7g7nd6xl2a",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/rust/README.md",
+      "topics": [
+        "rust",
+        "cargo",
+        "rustup",
+        "setup",
+        "ci",
+        "toolchain"
+      ],
+      "os": [
+        "linux",
+        "macos",
+        "freebsd",
+        "netbsd",
+        "openbsd"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ]
     }
   },
   "git": {}

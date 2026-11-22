@@ -1,4 +1,4 @@
-{ pkgs, bunLib, bsdkrun }:
+{ pkgs, bunLib, bsdkrun, craneLib }:
 let
   inherit (pkgs) lib;
   manifest = builtins.fromJSON (builtins.readFile ../package.json);
@@ -18,7 +18,8 @@ let
     root = ../.;
     fileset = lib.fileset.unions [
       ../package.json ../bun.lock ../spago.yaml ../spago.lock
-      ../src ../packages ../bin ../ui/src ../ui/assets ../ui/build.mjs
+      ../src (lib.fileset.fileFilter (file: file.name != "native.node") ../packages) ../bin ../ui/src ../ui/assets ../ui/build.mjs
+      ../Cargo.toml ../Cargo.lock ../crates ../scripts/build-cluster.mjs
       ../scripts/generate-bun-nix.mjs ./bun-deps.nix
     ];
   };
@@ -48,7 +49,30 @@ let
         cp -R node_modules "$out/"
       '';
     };
-  toolchain = [ pkgs.bun pkgs.nodejs_24 pkgs.purescript pkgs.git pkgs.curl pkgs.pkg-config ];
+  rustSource = lib.fileset.toSource {
+    root = ../.;
+    fileset = lib.fileset.unions [ ../Cargo.toml ../Cargo.lock ../crates ];
+  };
+  rustArgs = {
+    pname = "dbsandbox-cluster-native";
+    inherit version;
+    src = rustSource;
+    strictDeps = true;
+    cargoExtraArgs = "--locked -p dbsandbox-cluster-neon";
+    cargoProfile = "release";
+    doCheck = false;
+  };
+  cargoArtifacts = craneLib.buildDepsOnly rustArgs;
+  clusterNative = craneLib.buildPackage (rustArgs // {
+    inherit cargoArtifacts;
+    installPhaseCommand = ''
+      mkdir -p "$out/lib"
+      artifact=$(find target -type f -name 'libdbsandbox_cluster_neon${pkgs.stdenv.hostPlatform.extensions.sharedLibrary}' -print -quit)
+      test -n "$artifact"
+      install -m755 "$artifact" "$out/lib/native.node"
+    '';
+  });
+  toolchain = [ pkgs.cargo pkgs.rustc pkgs.rustfmt pkgs.clippy pkgs.bun pkgs.nodejs_24 pkgs.purescript pkgs.git pkgs.curl pkgs.pkg-config ];
   dbsandbox = pkgs.stdenv.mkDerivation {
     pname = "dbsandbox";
     inherit version;
@@ -73,6 +97,7 @@ let
       purs compile 'src/**/*.purs' 'packages/*/src/**/*.purs' \
         ${lib.concatMapStringsSep " " (path: lib.escapeShellArg "${path}/src/**/*.purs") (builtins.attrValues pursDeps)}
       bun ui/build.mjs
+      cp ${clusterNative}/lib/native.node packages/cluster/native.node
       mkdir -p dist
       bun build --compile --minify bin/dbsandbox.js --outfile dist/dbsandbox
       runHook postBuild

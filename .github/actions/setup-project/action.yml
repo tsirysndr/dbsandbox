@@ -1,5 +1,5 @@
 name: Set up and build dbsandbox
-description: Install the pinned FluentCI PureScript toolchain and build the checkout.
+description: Install pinned Rust and PureScript toolchains with FluentCI, then build the native module and checkout.
 runs:
   using: composite
   steps:
@@ -7,6 +7,7 @@ runs:
       with:
         version: v0.17.8
     - name: Install PureScript runtime libraries
+      if: runner.os == 'Linux'
       shell: bash
       run: |
         sudo -n apt-get update
@@ -18,8 +19,18 @@ runs:
           ~/.bun/install/cache
           ~/.cache/spago-nodejs
           .spago
-        key: dbsandbox-${{ runner.os }}-${{ hashFiles('bun.lock', 'spago.lock', '.fluentci/test/bun.lock', '.fluentci/test/spago.lock') }}
-        restore-keys: dbsandbox-${{ runner.os }}-
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: dbsandbox-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'bun.lock', 'spago.lock', '.fluentci/test/bun.lock', '.fluentci/test/spago.lock') }}
+        restore-keys: dbsandbox-${{ runner.os }}-${{ runner.arch }}-
+    - name: Set up Rust with FluentCI
+      shell: bash
+      run: |
+        set -o pipefail
+        fluentci --check-update=false run --frozen-lockfile setup-rust@0.2.2 setup \
+          --toolchain 1.100.0 --components rustfmt,clippy --profile minimal \
+          | node .fluentci/github-env.mjs
     - name: Set up PureScript, Spago, Node and Bun with FluentCI
       shell: bash
       run: |
@@ -27,6 +38,9 @@ runs:
         fluentci --check-update=false run --frozen-lockfile setup-purescript@v0.2.0 setup \
           --version 0.15.16 --spago-version 1.0.5 \
           --node-version 24.22.2 --bun-version 1.4.5 > .fluentci/setup.json
+    - name: Build the release native module before Bun lifecycle builds
+      shell: bash
+      run: node scripts/build-cluster.mjs
     - name: Build PureScript CI code and export the toolchain environment
       shell: bash
       env:

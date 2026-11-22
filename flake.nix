@@ -9,6 +9,7 @@
   };
 
   inputs = {
+    crane.url = "github:ipetkov/crane";
     bsdkrun.url = "github:tsirysndr/bsdkrun";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     bun2nix = {
@@ -17,12 +18,13 @@
     };
   };
 
-  outputs = { self, nixpkgs, bun2nix, bsdkrun }:
+  outputs = { self, nixpkgs, bun2nix, bsdkrun, crane }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
       project = system: import ./nix/package.nix {
         pkgs = nixpkgs.legacyPackages.${system};
+        craneLib = crane.mkLib nixpkgs.legacyPackages.${system};
         bsdkrun = bsdkrun.packages.${system}.bsdkrun;
         bunLib = bun2nix.packages.${system}.default;
       };
